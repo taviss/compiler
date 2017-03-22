@@ -3,8 +3,7 @@ package file.parser;
 import token.Token;
 import token.analyzer.TokenAnalyzer;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
@@ -19,15 +18,19 @@ public class SourceParser {
         List<Token> tokensFromFile = new LinkedList<>();
 
         try {
-            File file = new File(path);
-            Scanner input = new Scanner(file);
+            LineNumberReader lineNumberReader = new LineNumberReader(new FileReader(path));
+            String line;
 
-            while (input.hasNext()) {
-                String nextToken = input.next();
-                List<Token> resultedTokens = tokenAnalyzer.analyzeTextToken(nextToken);
-                tokensFromFile.addAll(resultedTokens);
+            while ((line = lineNumberReader.readLine()) != null) {
+                Scanner scanner = new Scanner(line).useDelimiter("(?=[\\s\\(;])");
+
+                while (scanner.hasNext()) {
+                    String nextToken = scanner.next();
+                    List<Token> currentTokenResultList = tokenAnalyzer.analyzeTextToken(lineNumberReader.getLineNumber(), nextToken);
+                    tokensFromFile.addAll(currentTokenResultList);
+                }
             }
-        } catch(FileNotFoundException e) {
+        } catch(IOException e) {
             //TODO catch
         }
         return tokensFromFile;

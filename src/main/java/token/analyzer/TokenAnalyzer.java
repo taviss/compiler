@@ -2,9 +2,7 @@ package token.analyzer;
 
 import definition.DefinitionEntry;
 import definition.Definitions;
-import token.TextToken;
-import token.Token;
-import token.TokenType;
+import token.*;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -19,29 +17,38 @@ public class TokenAnalyzer {
     private Definitions definitions;
 
     public List<Token> analyzeTextToken(int line, String token) {
-        List<Token> tokens = new LinkedList<>();
+        List<Token> tokenList = new LinkedList<>();
+        String currentText = token.trim();
 
         for(DefinitionEntry definitionEntry : definitions.getDefinitionEntries()) {
-            Pattern pattern = Pattern.compile(definitionEntry.getRegEx());
-            Matcher matcher = pattern.matcher(token);
+            Pattern pattern = Pattern.compile(definitionEntry.getRegEx().trim());
+            Matcher matcher = pattern.matcher(currentText);
 
             while (matcher.find()) {
                 switch(definitionEntry.getType()) {
-                    case ID: {
-                        TextToken textToken = new TextToken(TokenType.ID, line, matcher.group());
-                        tokens.add(textToken);
+                    case "text": {
+                        TextToken textToken = new TextToken(definitionEntry.getName(), line, matcher.group());
+                        String replaceString = Matcher.quoteReplacement(matcher.group());
+                        currentText =  currentText.replace(replaceString, "");
+                        tokenList.add(textToken);
                         break;
                     }
                     case "double": {
-                        TextToken textToken = new TextToken(TokenType., line, matcher.group());
-                        tokens.add(textToken);
+                        DoubleToken doubleToken = new DoubleToken(definitionEntry.getName(), line, Double.valueOf(matcher.group()));
+                        String replaceString = Matcher.quoteReplacement(matcher.group());
+                        currentText =  currentText.replace(replaceString, "");
+                        tokenList.add(doubleToken);
                         break;
                     }
                     case "long": {
-                        TextToken textToken = new TextToken(TokenType.ID, line, matcher.group());
-                        tokens.add(textToken);
+                        LongToken longToken = new LongToken(definitionEntry.getName(), line, Integer.valueOf(matcher.group()));
+                        String replaceString = Matcher.quoteReplacement(matcher.group());
+                        currentText =  currentText.replace(replaceString, "");
+                        tokenList.add(longToken);
                         break;
                     }
+                    default:
+                        break;
                 }
             }
         }
@@ -52,7 +59,7 @@ public class TokenAnalyzer {
                 case ''
             }
         }*/
-        return tokens;
+        return tokenList;
     }
 
     public Definitions getDefinitions() {

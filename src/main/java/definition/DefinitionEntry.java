@@ -11,17 +11,16 @@ import javax.xml.bind.annotation.XmlValue;
  */
 @XmlRootElement(name = "DEFINITION")
 public class DefinitionEntry {
-    private String name;
+    private TokenType name;
     private String regEx;
-    //FIXME type is not supposed to be TokenType, but double/text/long etc.
-    private TokenType type;
+    private String type;
 
-    public String getName() {
+    public TokenType getName() {
         return name;
     }
 
     @XmlValue
-    public void setName(String name) {
+    public void setName(TokenType name) {
         this.name = name;
     }
 
@@ -34,12 +33,12 @@ public class DefinitionEntry {
         this.regEx = regEx;
     }
 
-    public TokenType getType() {
+    public String getType() {
         return type;
     }
 
     @XmlAttribute( name = "type")
-    public void setType(TokenType type) {
+    public void setType(String type) {
         this.type = type;
     }
 }

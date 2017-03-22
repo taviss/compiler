@@ -21,7 +21,7 @@ public class DefinitionsLoader {
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
             definitions = (Definitions) jaxbUnmarshaller.unmarshal(defURL);
         } catch (JAXBException e) {
-            //TODO
+            System.out.println(e);
         }
         return definitions;
     }

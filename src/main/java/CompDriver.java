@@ -3,6 +3,7 @@ import definition.DefinitionsLoader;
 import file.parser.SourceParser;
 import token.analyzer.TokenAnalyzer;
 
+import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,7 +21,9 @@ public class CompDriver {
         tokenAnalyzer.setDefinitions(definitions);
         sourceParser.setTokenAnalyzer(tokenAnalyzer);
 
-        sourceParser.parsFile("D:\\comp\\src\\main\\resources\\tests\\3.c");
+        URL defURL = CompDriver.class.getClassLoader().getResource("tests/3.c");
+
+        sourceParser.parsFile(defURL.getPath());
 
         System.out.println("test");
     }
