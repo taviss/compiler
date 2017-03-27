@@ -22,11 +22,12 @@ public class SourceParser {
             String line;
 
             while ((line = lineNumberReader.readLine()) != null) {
-                Scanner scanner = new Scanner(line).useDelimiter("(?=[\\s\\(;])");
+                Scanner scanner = new Scanner(line).useDelimiter("(?=[\\s])");
 
                 while (scanner.hasNext()) {
                     String nextToken = scanner.next();
                     List<Token> currentTokenResultList = tokenAnalyzer.analyzeTextToken(lineNumberReader.getLineNumber(), nextToken);
+
                     tokensFromFile.addAll(currentTokenResultList);
                 }
             }

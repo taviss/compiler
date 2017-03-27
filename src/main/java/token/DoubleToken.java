@@ -11,4 +11,8 @@ public class DoubleToken extends Token {
         this.value = value;
     }
 
+    @Override
+    public String getRawValue() {
+        return String.valueOf(value);
+    }
 }

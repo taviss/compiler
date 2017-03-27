@@ -10,4 +10,9 @@ public class LongToken extends Token {
         super(type, line);
         this.value = value;
     }
+
+    @Override
+    public String getRawValue() {
+        return String.valueOf(value);
+    }
 }

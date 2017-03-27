@@ -10,4 +10,9 @@ public class TextToken extends Token {
         super(code, line);
         this.value = value;
     }
+
+    @Override
+    public String getRawValue() {
+        return value;
+    }
 }

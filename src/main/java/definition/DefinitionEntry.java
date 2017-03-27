@@ -14,6 +14,7 @@ public class DefinitionEntry {
     private TokenType name;
     private String regEx;
     private String type;
+    private int priority;
 
     public TokenType getName() {
         return name;
@@ -40,5 +41,14 @@ public class DefinitionEntry {
     @XmlAttribute( name = "type")
     public void setType(String type) {
         this.type = type;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    @XmlAttribute( name = "priority")
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 }

@@ -11,4 +11,14 @@ public abstract class Token {
         this.code = code;
         this.line = line;
     }
+
+    public abstract String getRawValue();
+
+    public TokenType getCode() {
+        return code;
+    }
+
+    public void setCode(TokenType code) {
+        this.code = code;
+    }
 }

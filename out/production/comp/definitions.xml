@@ -1,3 +1,50 @@
 <DEFINITIONS>
-    <DEFINITION exp="test">ID</DEFINITION>
+    <DEFINITION exp="break" type="text">BREAK</DEFINITION>
+    <DEFINITION exp="char" type="text">CHAR</DEFINITION>
+    <DEFINITION exp="double"> type="text"DOUBLE</DEFINITION>
+    <DEFINITION exp="else" type="text">ELSE</DEFINITION>
+    <DEFINITION exp="for" type="text">FOR</DEFINITION>
+    <DEFINITION exp="if" type="text">IF</DEFINITION>
+    <DEFINITION exp="int" type="text">INT</DEFINITION>
+    <DEFINITION exp="return" type="text">RETURN</DEFINITION>
+    <DEFINITION exp="struct" type="text">STRUCT</DEFINITION>
+    <DEFINITION exp="void" type="text">VOID</DEFINITION>
+    <DEFINITION exp="while" type="text">WHILE</DEFINITION>
+
+    <DEFINITION exp="," type="text">COMMA</DEFINITION>
+    <DEFINITION exp=";" type="text">SEMICOLON</DEFINITION>
+    <DEFINITION exp="\(" type="text">LPAR</DEFINITION>
+    <DEFINITION exp="\)" type="text">RPAR</DEFINITION>
+    <DEFINITION exp="\[" type="text">LBRACKET</DEFINITION>
+    <DEFINITION exp="\]" type="text">RBRACKET</DEFINITION>
+    <DEFINITION exp="\{" type="text">LACC</DEFINITION>
+    <DEFINITION exp="\}" type="text">RACC</DEFINITION>
+
+    <DEFINITION exp="\+" type="text">ADD</DEFINITION>
+    <DEFINITION exp="\-" type="text">SUB</DEFINITION>
+    <DEFINITION exp="\*" type="text">MUL</DEFINITION>
+    <DEFINITION exp="\/" type="text">DIV</DEFINITION>
+    <DEFINITION exp="\." type="text">DOT</DEFINITION>
+    <DEFINITION exp="&amp;&amp;" type="text">AND</DEFINITION>
+    <DEFINITION exp="\|\|" type="text">OR</DEFINITION>
+    <DEFINITION exp="\!" type="text">NOT</DEFINITION>
+    <DEFINITION exp="\=" type="text">ASSIGN</DEFINITION>
+    <DEFINITION exp="\=\=" type="text">EQUAL</DEFINITION>
+    <DEFINITION exp="\!\=" type="text">NOTEQ</DEFINITION>
+    <DEFINITION exp="\&lt;" type="text">LESS</DEFINITION>
+    <DEFINITION exp="\&lt;\=" type="text">LESSEQ</DEFINITION>
+    <DEFINITION exp="\&gt;" type="text">GREATER</DEFINITION>
+    <DEFINITION exp="\&gt;\=" type="text">GREATEREQ</DEFINITION>
+
+    <DEFINITION exp="[a-zA-Z_][a-zA-Z0-9_]*" type="text">ID</DEFINITION>
+    
+    <DEFINITION exp="[1-9] [0-9]* | '0' [0-7]* | '0x' [0-9a-fA-F]+"  type="long">CT_INT</DEFINITION>
+    <DEFINITION exp="[0-9]+ ( '.' [0-9]+ (( 'e' | 'E' ) ( '-' | '+' )? [0-9]+)? | ( '.' [0-9]+ )? (( 'e' | 'E' ) ( '-' | '+' )? [0-9]+) )" type="double">CT_REAL</DEFINITION>
+    <DEFINITION exp="['] ( ('\\' [abfnrtv'?&quot;\\0]) | [^'\\] ) [']" type="long">CT_CHAR</DEFINITION>
+    <DEFINITION exp="[&quot;] ( ('\\' [abfnrtv'?&quot;\\0]) | [^&quot;\\] )* [&quot;]" type="text">CT_STRING</DEFINITION>
+
+
+    <DEFINITION exp="[ \\n\\r\\t]">SPACE</DEFINITION>
+    <DEFINITION exp="'//' [^\\n\\r\\0]*">LINECOMMENT</DEFINITION>
+    <DEFINITION exp="'/*' ( [^*] | '*'+ [^*/] )* '*'+ '/'">COMMENT</DEFINITION>
 </DEFINITIONS>

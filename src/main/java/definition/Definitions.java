@@ -1,5 +1,7 @@
 package definition;
 
+import token.TokenType;
+
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.List;
@@ -18,5 +20,14 @@ public class Definitions {
     @XmlElement( name = "DEFINITION" )
     public void setDefinitionEntries(List<DefinitionEntry> definitionEntries) {
         this.definitionEntries = definitionEntries;
+    }
+
+    public DefinitionEntry getByName(TokenType tokenType) {
+        for(DefinitionEntry definitionEntry : definitionEntries) {
+            if(definitionEntry.getName() == tokenType) {
+                return definitionEntry;
+            }
+        }
+        return null;
     }
 }
