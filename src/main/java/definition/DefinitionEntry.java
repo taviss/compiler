@@ -11,9 +11,24 @@ import javax.xml.bind.annotation.XmlValue;
  */
 @XmlRootElement(name = "DEFINITION")
 public class DefinitionEntry {
+    /**
+     * The name/type of the token(definition)
+     */
     private TokenType name;
+
+    /**
+     * The regEx string
+     */
     private String regEx;
+
+    /**
+     * The type of the token. This is the group of the TokenType[Double, Long, Text]
+     */
     private String type;
+
+    /**
+     * The priority of the token. This is used when multiple matches are found, so we can pick the "strongest" one
+     */
     private int priority;
 
     public TokenType getName() {

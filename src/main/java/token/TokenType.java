@@ -33,7 +33,7 @@ public enum TokenType {
     SUB("SUB"),
     MUL("MUL"),
     DIV("DIV"),
-    DOT("DUT"),
+    DOT("DOT"),
     AND("AND"),
     OR("OR"),
     NOT("NOT"),
@@ -43,7 +43,10 @@ public enum TokenType {
     LESS("LESS"),
     LESSEQ("LESSEQ"),
     GREATER("GREATER"),
-    GREATEREQ("GREATEREQ");
+    GREATEREQ("GREATEREQ"),
+    SPACE("SPACE"),
+    LINECOMMENT("LINECOMMENT"),
+    COMMENT("COMMENT");
 
     private final String text;
 

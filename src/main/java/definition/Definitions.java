@@ -8,6 +8,9 @@ import java.util.List;
 
 /**
  * Created by octav on 3/15/2017.
+ *
+ * A class that contains a list of entries. Each of these entries describe a "definition" of a token, represented by a regEx and some other
+ * parameters for later use
  */
 @XmlRootElement( name = "DEFINITIONS" )
 public class Definitions {

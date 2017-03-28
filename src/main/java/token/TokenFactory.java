@@ -2,6 +2,8 @@ package token;
 
 /**
  * Created by octav on 3/15/2017.
+ *
+ * A factory for creating {@link Token}
  */
 public class TokenFactory {
 

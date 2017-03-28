@@ -3,6 +3,10 @@ package token;
 /**
  * Created by octav on 3/15/2017.
  */
+
+/**
+ * {@inheritDoc}
+ */
 public class LongToken extends Token {
     private long value;
 

@@ -1,9 +1,12 @@
 import definition.Definitions;
 import definition.DefinitionsLoader;
 import file.parser.SourceParser;
+import token.Token;
 import token.analyzer.TokenAnalyzer;
 
+import java.io.File;
 import java.net.URL;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,6 +14,7 @@ import java.util.regex.Pattern;
  * Created by octav on 3/15/2017.
  */
 public class CompDriver {
+    //TODO Use logger
 
     public static void main(String[] args){
         SourceParser sourceParser = new SourceParser();
@@ -21,10 +25,16 @@ public class CompDriver {
         tokenAnalyzer.setDefinitions(definitions);
         sourceParser.setTokenAnalyzer(tokenAnalyzer);
 
-        URL defURL = CompDriver.class.getClassLoader().getResource("tests/3.c");
+        //Just for testing
+        for(int i = 1; i <= 9; i++) {
+            URL defURL = CompDriver.class.getClassLoader().getResource("tests/" + i + ".c");
 
-        sourceParser.parsFile(defURL.getPath());
+            List<Token> tokenList = sourceParser.parsFile(defURL.getPath());
+            new File("D:/lftc-compiler/output/tests").mkdirs();
+            new File("D:/lftc-compiler/output/tests/" + i + ".c").delete();
+            sourceParser.generateOutput("D:/lftc-compiler/output/tests/" + i + ".c", tokenList);
+        }
 
-        System.out.println("test");
+        System.out.println("Fin");
     }
 }

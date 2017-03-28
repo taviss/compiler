@@ -1,6 +1,6 @@
 /*** primul *** program ***/
-void main()
-{
-	put_s("salut");
+void main() //many stuff /** insideCom **/
+{/* abc */
+	put_s("salut");//done
 }
 //sfarsit

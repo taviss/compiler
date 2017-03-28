@@ -13,6 +13,10 @@ import java.util.List;
 public class DefinitionsLoader {
     private static final String DEFAULT_DEF_PATH = "definitions.xml";
 
+    /**
+     * Loads the token types from the default path
+     * @return Definitions list
+     */
     public Definitions loadDefinitions() {
         Definitions definitions = new Definitions();
         try {
@@ -26,6 +30,11 @@ public class DefinitionsLoader {
         return definitions;
     }
 
+    /**
+     * Loads the token types from the specified path
+     * @param path
+     * @return Definitions list
+     */
     public Definitions loadDefinitions(String path) {
         Definitions definitions = new Definitions();
         try {
