@@ -39,21 +39,27 @@ public class TokenAnalyzer {
                     if(tokenIn.getRawValue().contains(foundString)) {
                         int index = tokenIn.getRawValue().indexOf(foundString);
                         //If they are the same ones we're talking about
-                        if(currentText.indexOf(tokenIn.getRawValue()) == currentText.indexOf(foundString) + index) {
-                            addToken = false;
+                        if(currentText.indexOf(tokenIn.getRawValue()) == currentText.indexOf(foundString) - index) {
+                            //First check if string, else check by priority
+                            if(tokenIn.getCode() == TokenType.CT_STRING) {
+                                addToken = false;
+                            } else {
+                                if (tokenDefinition != null && tokenDefinition.getPriority() < definitionEntry.getPriority()) {
+                                    addToken = false;
+                                } else {
+                                    tokenList.remove(tokenIn);
+                                }
+                            }
+                            break;
                         }
                     } else if(foundString.contains(tokenIn.getRawValue())) {
                         int index = foundString.indexOf(tokenIn.getRawValue());
                         //If they are the same ones we're talking about
-                        if(currentText.indexOf(tokenIn.getRawValue()) == currentText.indexOf(foundString) - index) {
-
-                            //TODO
+                        if(currentText.indexOf(tokenIn.getRawValue()) == currentText.indexOf(foundString) + index) {
                             //First check if string, else check by priority
                             if(tokenIn.getCode() == TokenType.CT_STRING || definitionEntry.getName() == TokenType.CT_STRING) {
                                 if (tokenIn.getCode() == TokenType.CT_STRING) {
                                     tokenList.remove(tokenIn);
-                                } else if (definitionEntry.getName() == TokenType.CT_STRING) {
-                                    continue;
                                 }
                             } else {
                                 if (tokenDefinition != null && tokenDefinition.getPriority() < definitionEntry.getPriority()) {
@@ -62,24 +68,8 @@ public class TokenAnalyzer {
                                     tokenList.remove(tokenIn);
                                 }
                             }
+                            break;
                         }
-                    }
-
-
-                    //If it exists and priority >, don't add new, else remove old one
-                    if((tokenIn.getRawValue().contains(foundString) && ) || foundString.contains(tokenIn.getRawValue())) {
-                        if(tokenIn.getCode() == TokenType.CT_STRING) {
-                            continue;
-                        } else if(definitionEntry.getName() == TokenType.CT_STRING) {
-
-                        }
-
-                        if(tokenDefinition != null && tokenDefinition.getPriority() < definitionEntry.getPriority()) {
-                            addToken = false;
-                        } else {
-                            tokenList.remove(tokenIn);
-                        }
-                        break;
                     }
                 }
 
