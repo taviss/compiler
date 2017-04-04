@@ -4,9 +4,12 @@ import definition.DefinitionEntry;
 import definition.Definitions;
 import token.*;
 
+import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import utils.Utils;
+
 
 /**
  * Created by octav on 3/15/2017.
@@ -96,7 +99,7 @@ public class TokenAnalyzer {
                 if(addToken) {
                     switch (definitionEntry.getType()) {
                         case "text": {
-                            TextToken textToken = new TextToken(definitionEntry.getName(), line, matcher.group());
+                            TextToken textToken = new TextToken(definitionEntry.getName(), line, foundString);
                         /*
                         String replaceString = Matcher.quoteReplacement(matcher.group());
                         currentText =  currentText.replace(replaceString, "");
@@ -107,7 +110,7 @@ public class TokenAnalyzer {
                             break;
                         }
                         case "double": {
-                            DoubleToken doubleToken = new DoubleToken(definitionEntry.getName(), line, Double.valueOf(matcher.group()));
+                            DoubleToken doubleToken = new DoubleToken(definitionEntry.getName(), line, Double.valueOf(foundString));
                         /*
                         String replaceString = Matcher.quoteReplacement(matcher.group());
                         currentText =  currentText.replace(replaceString, "");
@@ -117,15 +120,16 @@ public class TokenAnalyzer {
                             tokenList.add(doubleToken);
                             break;
                         }
+                        //FIXME: Chars should be long in definitions.xml!!
                         case "long": {
-                            long value;
-                            if(foundString.contains("x")) {
-                                value = Integer.decode(foundString);
-                            } else if(foundString.startsWith("0")) {
-                                value = Long.decode(foundString);
-                            } else {
-                                value = Long.valueOf(foundString);
-                            }
+                            long value = 0L;
+                                if (foundString.contains("x")) {
+                                    value = Integer.decode(foundString);
+                                } else if (foundString.startsWith("0")) {
+                                    value = Long.decode(foundString);
+                                } else {
+                                    value = Long.valueOf(foundString);
+                                }
                             LongToken longToken = new LongToken(definitionEntry.getName(), line, value);
                         /*
                         String replaceString = Matcher.quoteReplacement(matcher.group());
@@ -149,6 +153,7 @@ public class TokenAnalyzer {
                 case ''
             }
         }*/
+        fixStringsChars(tokenList);
         sortTokens(tokenList);
         return tokenList;
     }
@@ -164,6 +169,45 @@ public class TokenAnalyzer {
                 return o1.getStartMatchIndex() - o2.getStartMatchIndex();
             }
         });
+    }
+
+    /**
+     * Removes additional " and ' and fixes escaped characters. WARNING: This changes the order, so call before sort()!
+     * @param resultedTokens
+     */
+    public void fixStringsChars(List<Token> resultedTokens) {
+        List<Token> toBeAdded = new LinkedList<>();
+        for(Iterator<Token> iterator = resultedTokens.iterator(); iterator.hasNext();) {
+            Token token = iterator.next();
+            if (token.getCode() == TokenType.CT_STRING || token.getCode() == TokenType.CT_CHAR) {
+                int length = token.getRawValue().length();
+                String newValue = token.getRawValue().substring(1, length - 1);
+                newValue = Utils.fixEscapedChars(newValue);
+
+                iterator.remove();
+
+                Token newToken;
+                if(token.getCode() == TokenType.CT_CHAR) {
+                    try {
+                        byte[] bytes = newValue.getBytes("US-ASCII");
+                        Long valueAdded = (long) bytes[0];
+                        newToken = new LongToken(TokenType.CT_CHAR, token.getLine(), valueAdded);
+                        newToken.setStartMatchIndex(token.getStartMatchIndex());
+                        newToken.setEndMatchIndex(token.getEndMatchIndex());
+                        toBeAdded.add(newToken);
+                    } catch(UnsupportedEncodingException e) {
+                        //TODO
+                    }
+                } else {
+                    newToken = new TextToken(TokenType.CT_STRING, token.getLine(), newValue);
+                    newToken.setStartMatchIndex(token.getStartMatchIndex());
+                    newToken.setEndMatchIndex(token.getEndMatchIndex());
+                    toBeAdded.add(newToken);
+                }
+            }
+        }
+
+        resultedTokens.addAll(toBeAdded);
     }
 
     public Definitions getDefinitions() {

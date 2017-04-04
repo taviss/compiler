@@ -27,11 +27,19 @@ public class CompDriver {
 
         //Just for testing
         for(int i = 1; i <= 9; i++) {
+            System.out.println("File: " + i + ".c");
             URL defURL = CompDriver.class.getClassLoader().getResource("tests/" + i + ".c");
+
+            if(i == 4) {
+                System.out.print("");
+            }
 
             List<Token> tokenList = sourceParser.parsFile(defURL.getPath());
             new File("D:/lftc-compiler/output/tests").mkdirs();
             new File("D:/lftc-compiler/output/tests/" + i + ".c").delete();
+
+
+            //FIXME This is broken now because of the removal of first and last _"_ or _'_ from the match
             sourceParser.generateOutput("D:/lftc-compiler/output/tests/" + i + ".c", tokenList);
         }
 

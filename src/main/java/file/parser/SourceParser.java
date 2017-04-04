@@ -1,6 +1,8 @@
 package file.parser;
 
+import token.TextToken;
 import token.Token;
+import token.TokenType;
 import token.analyzer.TokenAnalyzer;
 
 import java.io.*;
@@ -58,6 +60,10 @@ public class SourceParser {
         } catch(IOException e) {
             //TODO catch
         }
+
+        Token token = new TextToken(TokenType.END, 0, "END");
+        tokensFromFile.add(token);
+
         System.out.println(tokensFromFile.toString());
         return tokensFromFile;
     }
