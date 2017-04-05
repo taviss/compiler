@@ -33,6 +33,7 @@ public class CompDriver {
 
             List<Token> tokenList = sourceParser.parsFile(defURL.getPath());
             SyntaxAnalyzer syntaxAnalyzer = new SyntaxAnalyzer(tokenList);
+            syntaxAnalyzer.start();
 
 
 
