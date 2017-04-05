@@ -70,4 +70,12 @@ public abstract class Token {
     public String toString() {
         return "[Value=" + getRawValue() + ", Type=" + getCode() + ", Line=" + getLine() + ", StartIndex=" + startMatchIndex + "]\n";
     }
+
+    public boolean equals(Object other) {
+        if(other instanceof Token) {
+            Token otherToken = (Token) other;
+            return otherToken.getLine() == this.getLine() && otherToken.getStartMatchIndex() == this.getStartMatchIndex() && otherToken.getCode() == this.getCode();
+        }
+        return false;
+    }
 }

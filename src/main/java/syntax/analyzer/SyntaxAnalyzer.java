@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import token.Token;
 
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import static token.TokenType.*;
@@ -40,6 +41,15 @@ public class SyntaxAnalyzer {
         return false;
     }
 
+    private void goBackTo(Token token) {
+        tokenIterator = tokens.iterator();
+        Token currentToken = tokenIterator.next();
+        while(!currentToken.equals(token)) {
+            currentToken = tokenIterator.next();
+        }
+        this.token = currentToken;
+    }
+
     public void start() {
         while(tokenIterator.hasNext()) {
             if(!unit()) logError("No unit found.");
@@ -48,11 +58,184 @@ public class SyntaxAnalyzer {
 
     public boolean unit() {
         if(declStruct()) return true;
+        if(declFunc()) return true;
+        if(declVar()) return true;
+        if(token.getCode() == END) {
+            getNext();
+            return  true;
+        }
+        return false;
+    }
+
+    public boolean declFunc() {
+        if(typeBase()) {
+            if(token.getCode() == MUL) {
+                getNext();
+            }
+
+            if(token.getCode() == ID) {
+                getNext();
+                if(token.getCode() == LPAR) {
+                    getNext();
+                    if(funcArg()) {
+                        while(token.getCode() == COMMA) {
+                            getNext();
+                            funcArg();
+                        }
+                    }
+                    if(token.getCode() == RPAR) {
+                        getNext();
+                        if(stmCompound()) {
+                            return true;
+                        } else logError("Missing statement");
+                    } else logError("Missing closing `)`");
+                } else logError("Missing opening `(`");
+            } else logError("Missing identifier");
+        }
+
+        if(token.getCode() == VOID) {
+            getNext();
+            if(token.getCode() == ID) {
+                getNext();
+                if(token.getCode() == LPAR) {
+                    getNext();
+                    if(funcArg()) {
+                        while(token.getCode() == COMMA) {
+                            getNext();
+                            funcArg();
+                        }
+                    }
+                    if(token.getCode() == RPAR) {
+                        getNext();
+                        if(stmCompound()) {
+                            return true;
+                        } else logError("Missing statement");
+                    } else logError("Missing closing `)`");
+                } else logError("Missing opening `(`");
+            } else logError("Missing identifier");
+        }
+        return false;
+    }
+
+    public boolean stmCompound() {
+        if(token.getCode() == LACC) {
+            getNext();
+            while(declVar() || stm()) {
+
+            }
+            if(token.getCode() == RACC) {
+                getNext();
+                return true;
+            } else logError("Missing closing `}`");
+        }
+        return false;
+    }
+
+    public boolean stm() {
+        if(stmCompound()) {
+            return true;
+        }
+        switch(token.getCode()) {
+            case IF: {
+                getNext();
+                if (token.getCode() == LPAR) {
+                    getNext();
+                    if (expr()) {
+                        if (token.getCode() == RPAR) {
+                            getNext();
+                            if (stm()) {
+                                if (token.getCode() == ELSE) {
+                                    getNext();
+                                    if (stm()) {
+                                        return true;
+                                    } else logError("Missing statement");
+                                } else return true;
+                            } else logError("Missing statement");
+                        } else logError("Missing closing `)`");
+                    } else logError("Missing expression in if");
+                } else logError("Missing opening `(`");
+                return false;
+            }
+            case WHILE: {
+                getNext();
+                if (token.getCode() == LPAR) {
+                    getNext();
+                    if (expr()) {
+                        if (token.getCode() == RPAR) {
+                            getNext();
+                            if (stm()) {
+                                return true;
+                            } else logError("Missing statement");
+                        } else logError("Missing closing `)`");
+                    } else logError("Missing expression in while");
+                } else logError("Missing opening `(`");
+                return false;
+            }
+            case FOR: {
+                getNext();
+                if(token.getCode() == LPAR) {
+                    getNext();
+                    expr();
+                    if(token.getCode() == SEMICOLON) {
+                        getNext();
+                        expr();
+                        if(token.getCode() == SEMICOLON) {
+                            getNext();
+                            expr();
+                            if(token.getCode() == RPAR) {
+                                getNext();
+                                if(stm()) {
+                                    return true;
+                                } else logError("Missing statement");
+                            } else logError("Missing closing `)`");
+                        } else logError("Missing `;`");
+                    } else logError("Missing `;`");
+                } else logError("Missing opening `(`");
+                return false;
+            }
+            case BREAK: {
+                getNext();
+                if(token.getCode() == SEMICOLON) {
+                    getNext();
+                    return true;
+                } else logError("Missing `;`");
+                return false;
+            }
+            case RETURN: {
+                getNext();
+                expr();
+                if(token.getCode() == SEMICOLON) {
+                    getNext();
+                    return true;
+                } else logError("Missing `;`");
+                return false;
+            }
+            default:
+                break;
+
+        }
+        expr();
+        if(token.getCode() == SEMICOLON) {
+            getNext();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean funcArg() {
+        if(typeBase()) {
+            if(token.getCode() == ID) {
+                getNext();
+                arrayDecl();
+                return true;
+            } else logError("Missing identifier");
+        }
         return false;
     }
 
     public boolean declStruct() {
         if(token.getCode() == STRUCT) {
+            Token currentToken = token;
             getNext();
             if (token.getCode() == ID) {
                 getNext();
@@ -66,21 +249,16 @@ public class SyntaxAnalyzer {
                             getNext();
                             return true;
                         } else {
-                            logError("Expected `;`");
+                            logError("Missing `;`");
                             return false;
                         }
                     } else {
-                        logError("Expected '}");
+                        logError("Missing closing '}");
                         return false;
                     }
-                } else {
-                    logError("Expected `LACC`");
-                    return false;
                 }
-            } else {
-                logError("Expected `ID`");
-                return false;
             }
+            goBackTo(currentToken);
         }
         return false;
     }
@@ -90,7 +268,15 @@ public class SyntaxAnalyzer {
             getNext();
             return true;
         }
-        logError("Expected type");
+
+        if(token.getCode() == STRUCT) {
+            Token currentToken = token;
+            getNext();
+            if(token.getCode() == ID) {
+                return true;
+            }
+            goBackTo(currentToken);
+        }
         return false;
     }
 
@@ -105,7 +291,7 @@ public class SyntaxAnalyzer {
                         getNext();
                         arrayDecl();
                     } else {
-                        logError("Expected `ID`");
+                        logError("Missing identifier");
                         return false;
                     }
                 }
@@ -113,11 +299,11 @@ public class SyntaxAnalyzer {
                     getNext();
                     return true;
                 } else {
-                    logError("Expected `;`");
+                    logError("Missing `;`");
                     return false;
                 }
             } else {
-                logError("Expected `ID`");
+                logError("Missing identifier");
                 return false;
             }
         }
@@ -129,9 +315,10 @@ public class SyntaxAnalyzer {
             getNext();
             expr();
             if(token.getCode() == RBRACKET) {
+                getNext();
                 return true;
             } else {
-                logError("Expected `}`");
+                logError("Missing closing `}`");
                 return false;
             }
         }
@@ -143,21 +330,22 @@ public class SyntaxAnalyzer {
     }
 
     public boolean exprAssign() {
+        Token currentToken = token;
         if(exprUnary()) {
             if (token.getCode() == ASSIGN) {
                 getNext();
-                if (exprAssign() || exprOr()) {
+                if (exprAssign()) {
                     return true;
                 } else {
-                    logError("Expected `exprAssign` or `epxrOr");
+                    logError("Missing assign expression");
                     return false;
                 }
-            } else {
-                logError("Expected `=`");
-                return false;
             }
+            //Go back since there's nothing else in here
+            goBackTo(currentToken);
         }
-        return false;
+
+        return exprOr();
     }
 
     public boolean exprOr() {
@@ -171,18 +359,13 @@ public class SyntaxAnalyzer {
         if(token.getCode() == OR) {
             getNext();
             if(exprAnd()) {
-                if(exprOr1()) {
-                    return true;
-                } else {
-                    logError("Expected `exprOr'`");
-                    return false;
-                }
+                exprOr1();
             } else {
-                logError("Expected `exprAnd`");
+                logError("Missing statement");
                 return false;
             }
         }
-        return false;
+        return true;
     }
 
     public boolean exprAnd() {
@@ -224,26 +407,28 @@ public class SyntaxAnalyzer {
         if(token.getCode() == MUL || token.getCode() == DIV) {
             getNext();
             if(exprCast()) {
-                if(exprMul1()) {
-                    return true;
-                }
+                exprMul1();
             }
         }
-        return false;
+        return true;
     }
 
     public boolean exprCast() {
+        Token currentToken = token;
         if(token.getCode() == LPAR) {
             getNext();
             if(typeName()) {
                 if(token.getCode() == RPAR) {
-                    if(exprCast() || exprUnary()) {
+                    getNext();
+                    if(exprCast()) {
                         return true;
                     }
                 }
             }
+            goBackTo(currentToken);
         }
-        return false;
+
+        return exprUnary();
     }
 
     public boolean typeName() {
@@ -258,12 +443,10 @@ public class SyntaxAnalyzer {
         if(token.getCode() == ADD || token.getCode() == SUB) {
             getNext();
             if(exprMul()) {
-                if(exprAdd1()) {
-                    return true;
-                }
+                exprAdd1();
             }
         }
-        return false;
+        return true;
     }
 
     public boolean exprRel1() {
@@ -271,55 +454,51 @@ public class SyntaxAnalyzer {
                 || token.getCode() == GREATEREQ) {
             getNext();
             if(exprAdd()) {
-                if(exprRel1()) {
-                    return true;
-                }
+                exprRel1();
             }
         }
-        return false;
+        return true;
     }
 
     public boolean exprEq1() {
         if(token.getCode() == EQUAL || token.getCode() == NOTEQ) {
             getNext();
             if(exprRel()) {
-                if(exprEq1()) {
-                    return true;
-                }
+                exprEq1();
             }
         }
-        return false;
+        return true;
     }
 
     public boolean exprAnd1() {
         if(token.getCode() == AND) {
             getNext();
             if(exprEq()) {
-                if(exprAnd1()) {
-                    return true;
-                }
+                exprAnd1();
             }
         }
-        return false;
+        return true;
     }
 
     public boolean exprUnary() {
+        Token currentToken = token;
         if(token.getCode() == SUB || token.getCode() == NOT) {
             getNext();
-            if(exprPostfix()) {
-                return exprUnary1();
+            if(exprUnary()) {
+                return true;
             }
+            goBackTo(currentToken);
         }
-        return false;
+
+
+        return exprPostfix();
     }
 
     public boolean exprUnary1() {
         if(exprPostfix()) {
-            if(exprUnary1()) {
-                return true;
-            }
+            exprUnary1();
         }
-        return false;
+        return true;
     }
 
     public boolean exprPostfix() {
@@ -335,17 +514,18 @@ public class SyntaxAnalyzer {
             if(expr()) {
                 if(token.getCode() == RBRACKET) {
                     getNext();
-                    return true;
+                    exprPostfix1();
                 }
             }
         }
         if(token.getCode() == DOT) {
             getNext();
             if(token.getCode() == ID) {
-                return true;
+                getNext();
+                exprPostfix1();
             }
         }
-        return false;
+        return true;
     }
 
     public boolean exprPrimary() {
@@ -355,19 +535,24 @@ public class SyntaxAnalyzer {
                 getNext();
                 expr();
                 while(token.getCode() == COMMA) {
+                    getNext();
                     expr();
                 }
                 if(token.getCode() == RPAR) {
+                    getNext();
                     return true;
                 }
             }
             return true;
         } else if(token.getCode() == CT_CHAR || token.getCode() == CT_INT || token.getCode() == CT_REAL
                 || token.getCode() == CT_STRING) {
+            getNext();
             return true;
         } else if(token.getCode() == LPAR) {
+            getNext();
             if(expr()) {
                 if(token.getCode() == RPAR) {
+                    getNext();
                     return true;
                 }
             }
