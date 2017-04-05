@@ -68,6 +68,7 @@ public class SyntaxAnalyzer {
     }
 
     public boolean declFunc() {
+        Token currentToken = token;
         if(typeBase()) {
             if(token.getCode() == MUL) {
                 getNext();
@@ -89,31 +90,32 @@ public class SyntaxAnalyzer {
                             return true;
                         } else logError("Missing statement");
                     } else logError("Missing closing `)`");
-                } else logError("Missing opening `(`");
-            } else logError("Missing identifier");
+                }
+            }
         }
 
         if(token.getCode() == VOID) {
             getNext();
             if(token.getCode() == ID) {
                 getNext();
-                if(token.getCode() == LPAR) {
+                if (token.getCode() == LPAR) {
                     getNext();
-                    if(funcArg()) {
-                        while(token.getCode() == COMMA) {
+                    if (funcArg()) {
+                        while (token.getCode() == COMMA) {
                             getNext();
                             funcArg();
                         }
                     }
-                    if(token.getCode() == RPAR) {
+                    if (token.getCode() == RPAR) {
                         getNext();
-                        if(stmCompound()) {
+                        if (stmCompound()) {
                             return true;
                         } else logError("Missing statement");
                     } else logError("Missing closing `)`");
-                } else logError("Missing opening `(`");
-            } else logError("Missing identifier");
+                }
+            }
         }
+        goBackTo(currentToken);
         return false;
     }
 
@@ -270,12 +272,11 @@ public class SyntaxAnalyzer {
         }
 
         if(token.getCode() == STRUCT) {
-            Token currentToken = token;
             getNext();
             if(token.getCode() == ID) {
+                getNext();
                 return true;
-            }
-            goBackTo(currentToken);
+            } else logError("Missing identifier");
         }
         return false;
     }
