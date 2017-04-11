@@ -52,7 +52,9 @@ public class SyntaxAnalyzer {
 
     public void start() {
         while(tokenIterator.hasNext()) {
-            if(!unit()) logError("No unit found.");
+            if(!unit()) {
+                break;
+            }
         }
     }
 
@@ -88,8 +90,8 @@ public class SyntaxAnalyzer {
                         getNext();
                         if(stmCompound()) {
                             return true;
-                        } else logError("Missing statement");
-                    } else logError("Missing closing `)`");
+                        } else logError("Missing closing `}` or invalid statement");
+                    } else logError("Missing closing `)` or invalid statement");
                 }
             }
         }
@@ -110,8 +112,8 @@ public class SyntaxAnalyzer {
                         getNext();
                         if (stmCompound()) {
                             return true;
-                        } else logError("Missing statement");
-                    } else logError("Missing closing `)`");
+                        } else logError("Missing closing `}` or invalid statement");
+                    } else logError("Missing closing `)` or invalid statement");
                 }
             }
         }
@@ -128,7 +130,7 @@ public class SyntaxAnalyzer {
             if(token.getCode() == RACC) {
                 getNext();
                 return true;
-            } else logError("Missing closing `}`");
+            }
         }
         return false;
     }
@@ -345,8 +347,11 @@ public class SyntaxAnalyzer {
             //Go back since there's nothing else in here
             goBackTo(currentToken);
         }
-
-        return exprOr();
+        if (exprOr()) {
+            return true;
+        }
+        goBackTo(currentToken);
+        return false;
     }
 
     public boolean exprOr() {
@@ -409,6 +414,8 @@ public class SyntaxAnalyzer {
             getNext();
             if(exprCast()) {
                 exprMul1();
+            } else {
+                return false;
             }
         }
         return true;
@@ -445,6 +452,8 @@ public class SyntaxAnalyzer {
             getNext();
             if(exprMul()) {
                 exprAdd1();
+            } else {
+                return false;
             }
         }
         return true;
@@ -456,6 +465,8 @@ public class SyntaxAnalyzer {
             getNext();
             if(exprAdd()) {
                 exprRel1();
+            } else {
+                return false;
             }
         }
         return true;
@@ -466,6 +477,8 @@ public class SyntaxAnalyzer {
             getNext();
             if(exprRel()) {
                 exprEq1();
+            } else {
+                return false;
             }
         }
         return true;
@@ -476,6 +489,8 @@ public class SyntaxAnalyzer {
             getNext();
             if(exprEq()) {
                 exprAnd1();
+            } else {
+                return false;
             }
         }
         return true;
@@ -516,10 +531,14 @@ public class SyntaxAnalyzer {
                 if(token.getCode() == RBRACKET) {
                     getNext();
                     exprPostfix1();
+                } else {
+                    return false;
                 }
+            } else {
+                return false;
             }
         }
-        if(token.getCode() == DOT) {
+        else if(token.getCode() == DOT) {
             getNext();
             if(token.getCode() == ID) {
                 getNext();
@@ -542,6 +561,8 @@ public class SyntaxAnalyzer {
                 if(token.getCode() == RPAR) {
                     getNext();
                     return true;
+                } else {
+                    return false;
                 }
             }
             return true;
