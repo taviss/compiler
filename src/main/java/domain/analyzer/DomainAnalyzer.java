@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
+import static domain.symbols.ClassType.CLS_EXTFUNC;
 import static domain.symbols.ClassType.CLS_VAR;
 
 public class DomainAnalyzer {
@@ -21,11 +22,35 @@ public class DomainAnalyzer {
     }
 
     public Symbol addSymbol(String name, ClassType classType) {
-        Symbol symbol = new Symbol();
-        symbol.setName(name);
-        symbol.setCls(classType);
-        symbol.setDepth(getCurrentDepth());
-        symbolList.add(symbol);
+        Symbol symbol = null;
+        switch(classType) {
+            case CLS_VAR: {
+                symbol = new Symbol();
+                symbol.setName(name);
+                symbol.setCls(classType);
+                symbol.setDepth(getCurrentDepth());
+                symbolList.add(symbol);
+                break;
+            }
+            case CLS_FUNC:
+            case CLS_EXTFUNC: {
+                symbol = new FuncSymbol();
+                symbol.setName(name);
+                symbol.setCls(classType);
+                symbol.setDepth(getCurrentDepth());
+                symbolList.add(symbol);
+                break;
+            }
+            case CLS_STRUCT: {
+                symbol = new StructSymbol();
+                symbol.setName(name);
+                symbol.setCls(classType);
+                symbol.setDepth(getCurrentDepth());
+                symbolList.add(symbol);
+                break;
+            }
+        }
+
         return symbol;
     }
 
@@ -62,7 +87,21 @@ public class DomainAnalyzer {
                 //Error
             } else {
                 Symbol symbol = addSymbol(currentStruct.getMembers(), token.getRawValue(), CLS_VAR);
+                symbol.setType(type);
             }
+        } else if(getCurrentFunc() != null) {
+            Symbol symbol = findSymbol(token.getRawValue());
+            if(symbol != null && symbol.getDepth() == getCurrentDepth()) {
+                //Error
+            }
+            symbol = addSymbol(token.getRawValue(),CLS_VAR);
+            symbol.setType(type);
+        } else {
+            if(findSymbol(token.getRawValue()) != null) {
+                //Error
+            }
+            Symbol symbol = addSymbol(token.getRawValue(),CLS_VAR);
+            symbol.setType(type);
         }
     }
 

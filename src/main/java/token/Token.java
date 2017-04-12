@@ -1,5 +1,7 @@
 package token;
 
+import static token.TokenType.CT_CHAR;
+
 /**
  * Created by octav on 3/15/2017.
  *
@@ -68,7 +70,7 @@ public abstract class Token {
     }
 
     public String toString() {
-        return "[Value=" + getRawValue() + ", Type=" + getCode() + ", Line=" + getLine() + ", StartIndex=" + startMatchIndex + "]\n";
+        return "[Value=" + (getCode() == CT_CHAR ? Character.toString((char) ((int) Integer.valueOf(getRawValue()))) : getRawValue()) + ", Type=" + getCode() + ", Line=" + getLine() + ", StartIndex=" + startMatchIndex + "]\n";
     }
 
     public boolean equals(Object other) {

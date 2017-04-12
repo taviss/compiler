@@ -2,7 +2,7 @@ package domain.symbols;
 
 public class Symbol {
     private String name;
-    private TypeBase typeBase;
+    private Type type;
     private ClassType cls;
     private int depth;
 
@@ -22,12 +22,12 @@ public class Symbol {
         this.cls = cls;
     }
 
-    public TypeBase getTypeBase() {
-        return typeBase;
+    public Type getType() {
+        return type;
     }
 
-    public void setTypeBase(TypeBase typeBase) {
-        this.typeBase = typeBase;
+    public void setType(Type type) {
+        this.type = type;
     }
 
     public int getDepth() {

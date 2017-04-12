@@ -1,8 +1,13 @@
 package syntax.analyzer;
 
+import domain.analyzer.DomainAnalyzer;
+import domain.symbols.ClassType;
+import domain.symbols.StructSymbol;
+import domain.symbols.TypeBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import token.Token;
+import token.TokenType;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -22,15 +27,13 @@ public class SyntaxAnalyzer {
     private List<Token> tokens;
     private Iterator<Token> tokenIterator;
     private Token token;
+    private DomainAnalyzer domainAnalyzer;
 
     public SyntaxAnalyzer(List<Token> tokens) {
         this.tokens = tokens;
         this.tokenIterator = tokens.iterator();
+        this.domainAnalyzer = new DomainAnalyzer();
         getNext();
-    }
-
-    private void logError(String error) {
-        LOG.error(error + " @ " + token.getLine());
     }
 
     private boolean getNext() {
@@ -71,7 +74,7 @@ public class SyntaxAnalyzer {
 
     public boolean declFunc() {
         Token currentToken = token;
-        if(typeBase()) {
+        if(typeBase() != null) {
             if(token.getCode() == MUL) {
                 getNext();
             }
@@ -90,8 +93,8 @@ public class SyntaxAnalyzer {
                         getNext();
                         if(stmCompound()) {
                             return true;
-                        } else logError("Missing closing `}` or invalid statement");
-                    } else logError("Missing closing `)` or invalid statement");
+                        } else throw new InvalidStatementException("Missing closing `}` or invalid statement", token.getLine());
+                    } else throw new InvalidStatementException("Missing closing `)` or invalid statement", token.getLine());
                 }
             }
         }
@@ -112,8 +115,8 @@ public class SyntaxAnalyzer {
                         getNext();
                         if (stmCompound()) {
                             return true;
-                        } else logError("Missing closing `}` or invalid statement");
-                    } else logError("Missing closing `)` or invalid statement");
+                        } else throw new InvalidStatementException("Missing closing `}` or invalid statement", token.getLine());
+                    } else throw new InvalidStatementException("Missing closing `)` or invalid statement", token.getLine());
                 }
             }
         }
@@ -152,13 +155,12 @@ public class SyntaxAnalyzer {
                                     getNext();
                                     if (stm()) {
                                         return true;
-                                    } else logError("Missing statement");
+                                    } else throw new InvalidStatementException("Missing statement", token.getLine());
                                 } else return true;
-                            } else logError("Missing statement");
-                        } else logError("Missing closing `)`");
-                    } else logError("Missing expression in if");
-                } else logError("Missing opening `(`");
-                return false;
+                            } else throw new InvalidStatementException("Missing statement", token.getLine());
+                        } else throw new InvalidStatementException("Missing closing `)`", token.getLine());
+                    } else throw new InvalidStatementException("Missing expression in if", token.getLine());
+                } else throw new InvalidStatementException("Missing opening `(`", token.getLine());
             }
             case WHILE: {
                 getNext();
@@ -169,11 +171,10 @@ public class SyntaxAnalyzer {
                             getNext();
                             if (stm()) {
                                 return true;
-                            } else logError("Missing statement");
-                        } else logError("Missing closing `)`");
-                    } else logError("Missing expression in while");
-                } else logError("Missing opening `(`");
-                return false;
+                            } else throw new InvalidStatementException("Missing statement", token.getLine());
+                        } else throw new InvalidStatementException("Missing closing `)`", token.getLine());
+                    } else throw new InvalidStatementException("Missing expression in while", token.getLine());
+                } else throw new InvalidStatementException("Missing opening `(`", token.getLine());
             }
             case FOR: {
                 getNext();
@@ -190,20 +191,18 @@ public class SyntaxAnalyzer {
                                 getNext();
                                 if(stm()) {
                                     return true;
-                                } else logError("Missing statement");
-                            } else logError("Missing closing `)`");
-                        } else logError("Missing `;`");
-                    } else logError("Missing `;`");
-                } else logError("Missing opening `(`");
-                return false;
+                                } else throw new InvalidStatementException("Missing statement", token.getLine());
+                            } else throw new InvalidStatementException("Expected closing `)`", token.getLine());
+                        } else throw new InvalidStatementException("Expected `;`", token.getLine());
+                    } else throw new InvalidStatementException("Expected `;`", token.getLine());
+                } else throw new InvalidStatementException("Expected opening `(`", token.getLine());
             }
             case BREAK: {
                 getNext();
                 if(token.getCode() == SEMICOLON) {
                     getNext();
                     return true;
-                } else logError("Missing `;`");
-                return false;
+                } else throw new InvalidStatementException("Missing `;`", token.getLine());
             }
             case RETURN: {
                 getNext();
@@ -211,8 +210,7 @@ public class SyntaxAnalyzer {
                 if(token.getCode() == SEMICOLON) {
                     getNext();
                     return true;
-                } else logError("Missing `;`");
-                return false;
+                } else throw new InvalidStatementException("Missing `;`", token.getLine());
             }
             default:
                 break;
@@ -227,12 +225,13 @@ public class SyntaxAnalyzer {
     }
 
     public boolean funcArg() {
-        if(typeBase()) {
+        TypeBase typeBase;
+        if((typeBase = typeBase()) != null) {
             if(token.getCode() == ID) {
                 getNext();
                 arrayDecl();
                 return true;
-            } else logError("Missing identifier");
+            } else throw new InvalidStatementException("Missing identifier", token.getLine());
         }
         return false;
     }
@@ -244,6 +243,11 @@ public class SyntaxAnalyzer {
             if (token.getCode() == ID) {
                 getNext();
                 if (token.getCode() == LACC) {
+                    String tokenText = token.getRawValue();
+                    if(domainAnalyzer.findSymbol(tokenText) != null) {
+                        throw new InvalidStatementException("Symbol already defined " + tokenText, token.getLine());
+                    }
+                    domainAnalyzer.setCurrentStruct((StructSymbol) domainAnalyzer.addSymbol(tokenText, ClassType.CLS_STRUCT));
                     getNext();
                     while(declVar()) {
                     }
@@ -251,14 +255,13 @@ public class SyntaxAnalyzer {
                         getNext();
                         if(token.getCode() == SEMICOLON) {
                             getNext();
+                            domainAnalyzer.setCurrentStruct(null);
                             return true;
                         } else {
-                            logError("Missing `;`");
-                            return false;
+                            throw new InvalidStatementException("Missing `;`", token.getLine());
                         }
                     } else {
-                        logError("Missing closing '}");
-                        return false;
+                        throw new InvalidStatementException("Missing closing '}", token.getLine());
                     }
                 }
             }
@@ -267,62 +270,62 @@ public class SyntaxAnalyzer {
         return false;
     }
 
-    public boolean typeBase() {
+    public TypeBase typeBase() {
         if(token.getCode() == INT || token.getCode() == DOUBLE || token.getCode() == CHAR) {
+            TokenType tokenType = token.getCode();
             getNext();
-            return true;
+            return TypeBase.valueOf("TB_" + tokenType.toString());
         }
 
         if(token.getCode() == STRUCT) {
+            TokenType tokenType = token.getCode();
             getNext();
             if(token.getCode() == ID) {
                 getNext();
-                return true;
-            } else logError("Missing identifier");
+                return TypeBase.valueOf("TB_" + tokenType.toString());
+            } else throw new InvalidStatementException("Missing identifier", token.getLine());
         }
-        return false;
+        return null;
     }
 
     public boolean declVar() {
-        if(typeBase()) {
+        TypeBase typeBase;
+        if((typeBase = typeBase()) != null) {
             if (token.getCode() == ID) {
+                String tokenID = token.getRawValue();
                 getNext();
-                arrayDecl();
+                int noOfElements = arrayDecl();
                 while (token.getCode() == COMMA) {
                     getNext();
                     if (token.getCode() == ID) {
                         getNext();
                         arrayDecl();
                     } else {
-                        logError("Missing identifier");
-                        return false;
+                        throw new InvalidStatementException("Missing identifier", token.getLine());
                     }
                 }
                 if (token.getCode() == SEMICOLON) {
                     getNext();
                     return true;
                 } else {
-                    logError("Missing `;`");
-                    return false;
+                    throw new InvalidStatementException("Missing `;`", token.getLine());
                 }
             } else {
-                logError("Missing identifier");
-                return false;
+                throw new InvalidStatementException("Missing identifier", token.getLine());
             }
         }
         return false;
     }
 
-    public boolean arrayDecl() {
+    public int arrayDecl() {
         if(token.getCode() == LBRACKET) {
             getNext();
             expr();
             if(token.getCode() == RBRACKET) {
                 getNext();
-                return true;
+                return ;
             } else {
-                logError("Missing closing `}`");
-                return false;
+                throw new InvalidStatementException("Missing closing `}`", token.getLine());
             }
         }
         return false;
@@ -340,8 +343,7 @@ public class SyntaxAnalyzer {
                 if (exprAssign()) {
                     return true;
                 } else {
-                    logError("Missing assign expression");
-                    return false;
+                    throw new InvalidStatementException("Missing assign expression", token.getLine());
                 }
             }
             //Go back since there's nothing else in here
@@ -367,8 +369,7 @@ public class SyntaxAnalyzer {
             if(exprAnd()) {
                 exprOr1();
             } else {
-                logError("Missing statement");
-                return false;
+                throw new InvalidStatementException("Missing statement", token.getLine());
             }
         }
         return true;
@@ -415,7 +416,7 @@ public class SyntaxAnalyzer {
             if(exprCast()) {
                 exprMul1();
             } else {
-                return false;
+                throw new InvalidStatementException("Missing expression ", token.getLine());
             }
         }
         return true;
@@ -440,7 +441,7 @@ public class SyntaxAnalyzer {
     }
 
     public boolean typeName() {
-        if(typeBase()) {
+        if(typeBase() != null) {
             arrayDecl();
             return true;
         }
@@ -453,7 +454,7 @@ public class SyntaxAnalyzer {
             if(exprMul()) {
                 exprAdd1();
             } else {
-                return false;
+                throw new InvalidStatementException("Missing expression after (+/-)", token.getLine());
             }
         }
         return true;
@@ -466,7 +467,7 @@ public class SyntaxAnalyzer {
             if(exprAdd()) {
                 exprRel1();
             } else {
-                return false;
+                throw new InvalidStatementException("Missing expression", token.getLine());
             }
         }
         return true;
@@ -478,7 +479,7 @@ public class SyntaxAnalyzer {
             if(exprRel()) {
                 exprEq1();
             } else {
-                return false;
+                throw new InvalidStatementException("Missing expression", token.getLine());
             }
         }
         return true;
@@ -490,7 +491,7 @@ public class SyntaxAnalyzer {
             if(exprEq()) {
                 exprAnd1();
             } else {
-                return false;
+                throw new InvalidStatementException("Missing expression", token.getLine());
             }
         }
         return true;
@@ -518,24 +519,26 @@ public class SyntaxAnalyzer {
     }
 
     public boolean exprPostfix() {
-        if(exprPrimary()) {
+        if(exprPrimary() != null) {
             return exprPostfix1();
         }
         return false;
     }
 
-    public boolean exprPostfix1() {
+    public String exprPostfix1() {
         if(token.getCode() == LBRACKET) {
             getNext();
-            if(expr()) {
+            Double exprResult;
+            if((exprResult = expr()) != null) {
                 if(token.getCode() == RBRACKET) {
                     getNext();
-                    exprPostfix1();
+                    String postResult = exprPostfix1();
+                    return "".equals(postResult) ? exprResult
                 } else {
-                    return false;
+                    throw new InvalidStatementException("Missing expression", token.getLine());
                 }
             } else {
-                return false;
+                throw new InvalidStatementException("Missing expression", token.getLine());
             }
         }
         else if(token.getCode() == DOT) {
@@ -545,12 +548,14 @@ public class SyntaxAnalyzer {
                 exprPostfix1();
             }
         }
-        return true;
+        return "";
     }
 
-    public boolean exprPrimary() {
+    public ConsumedResult exprPrimary() {
+        ConsumedResult consumedResult = new ConsumedResult();
         if(token.getCode() == ID) {
             getNext();
+            consumedResult.validate();
             if(token.getCode() == LPAR) {
                 getNext();
                 expr();
@@ -560,25 +565,28 @@ public class SyntaxAnalyzer {
                 }
                 if(token.getCode() == RPAR) {
                     getNext();
-                    return true;
+                    return consumedResult;
                 } else {
-                    return false;
+                    throw new InvalidStatementException("Missing expression", token.getLine());
                 }
             }
-            return true;
+            return consumedResult;
         } else if(token.getCode() == CT_CHAR || token.getCode() == CT_INT || token.getCode() == CT_REAL
                 || token.getCode() == CT_STRING) {
+            consumedResult.validate();
+            switch token.getCode()
             getNext();
-            return true;
+
+            return tokenText;
         } else if(token.getCode() == LPAR) {
             getNext();
             if(expr()) {
                 if(token.getCode() == RPAR) {
                     getNext();
-                    return true;
+                    return "";
                 }
             }
         }
-        return false;
+        return null;
     }
 }

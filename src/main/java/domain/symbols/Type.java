@@ -2,6 +2,7 @@ package domain.symbols;
 
 public class Type {
     private TypeBase typeBase;
+    private int noOfElements;
 
     public Type() {
 
@@ -17,5 +18,13 @@ public class Type {
 
     public void setTypeBase(TypeBase typeBase) {
         this.typeBase = typeBase;
+    }
+
+    public int getNoOfElements() {
+        return noOfElements;
+    }
+
+    public void setNoOfElements(int noOfElements) {
+        this.noOfElements = noOfElements;
     }
 }
