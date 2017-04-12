@@ -1,14 +1,13 @@
 package syntax.analyzer;
 
 import domain.analyzer.DomainAnalyzer;
-import domain.symbols.ClassType;
-import domain.symbols.StructSymbol;
-import domain.symbols.TypeBase;
+import domain.symbols.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import token.Token;
 import token.TokenType;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -74,9 +73,13 @@ public class SyntaxAnalyzer {
 
     public boolean declFunc() {
         Token currentToken = token;
-        if(typeBase() != null) {
+        Type type = new Type();
+        if((type = typeBase(type)) != null) {
             if(token.getCode() == MUL) {
+                type.setNoOfElements(0);
                 getNext();
+            } else {
+                type.setNoOfElements(-1);
             }
 
             if(token.getCode() == ID) {
@@ -99,7 +102,9 @@ public class SyntaxAnalyzer {
             }
         }
 
+        type = new Type();
         if(token.getCode() == VOID) {
+            type.setTypeBase(TypeBase.TB_VOID);
             getNext();
             if(token.getCode() == ID) {
                 getNext();
@@ -270,36 +275,57 @@ public class SyntaxAnalyzer {
         return false;
     }
 
-    public TypeBase typeBase() {
+    public Type typeBase(Type type) {
         if(token.getCode() == INT || token.getCode() == DOUBLE || token.getCode() == CHAR) {
             TokenType tokenType = token.getCode();
             getNext();
-            return TypeBase.valueOf("TB_" + tokenType.toString());
+            type.setTypeBase(TypeBase.valueOf("TB_" + tokenType.toString()));
+            return type;
         }
 
         if(token.getCode() == STRUCT) {
-            TokenType tokenType = token.getCode();
             getNext();
             if(token.getCode() == ID) {
+                Symbol symbol = domainAnalyzer.findSymbol(token.getRawValue());
+                if(symbol == null) {
+                    throw new InvalidStatementException("Undefined symbol " + token.getRawValue(), token.getLine());
+                } else if(symbol.getCls() != ClassType.CLS_STRUCT) {
+                    throw new InvalidStatementException(token.getRawValue() + " is not a struct", token.getLine());
+                }
                 getNext();
-                return TypeBase.valueOf("TB_" + tokenType.toString());
+                StructType structType = new StructType();
+                structType.setSymbol(symbol);
+                structType.setNoOfElements(type.getNoOfElements());
+                return structType;
             } else throw new InvalidStatementException("Missing identifier", token.getLine());
         }
         return null;
     }
 
     public boolean declVar() {
-        TypeBase typeBase;
-        if((typeBase = typeBase()) != null) {
+        Type type = new Type();
+        if((type = typeBase(type)) != null) {
             if (token.getCode() == ID) {
-                String tokenID = token.getRawValue();
+                Token addToken = token;
                 getNext();
-                int noOfElements = arrayDecl();
+                Type arrayDeclType;
+                if((arrayDeclType = arrayDecl(type)) != null) {
+                    type = arrayDeclType;
+                } else {
+                    type.setNoOfElements(-1);
+                }
+                domainAnalyzer.addVar(addToken, type);
                 while (token.getCode() == COMMA) {
                     getNext();
                     if (token.getCode() == ID) {
+                        addToken = token;
                         getNext();
-                        arrayDecl();
+                        if((arrayDeclType = arrayDecl(type)) != null) {
+                            type = arrayDeclType;
+                        } else {
+                            type.setNoOfElements(-1);
+                        }
+                        domainAnalyzer.addVar(addToken, type);
                     } else {
                         throw new InvalidStatementException("Missing identifier", token.getLine());
                     }
@@ -317,21 +343,22 @@ public class SyntaxAnalyzer {
         return false;
     }
 
-    public int arrayDecl() {
+    public Type arrayDecl(Type type) {
         if(token.getCode() == LBRACKET) {
             getNext();
             expr();
             if(token.getCode() == RBRACKET) {
                 getNext();
-                return ;
+                type.setNoOfElements(0);
+                return type;
             } else {
                 throw new InvalidStatementException("Missing closing `}`", token.getLine());
             }
         }
-        return false;
+        return null;
     }
 
-    public boolean expr() {
+    public ConsumedResult expr() {
         return exprAssign();
     }
 
@@ -440,12 +467,17 @@ public class SyntaxAnalyzer {
         return exprUnary();
     }
 
-    public boolean typeName() {
-        if(typeBase() != null) {
-            arrayDecl();
-            return true;
+    public Type typeName(Type type) {
+        if((type = typeBase(type)) != null) {
+            Type arrayDeclType;
+            if((arrayDeclType = arrayDecl(type)) != null) {
+                type = arrayDeclType;
+            } else {
+                type.setNoOfElements(-1);
+            }
+            return type;
         }
-        return false;
+        return null;
     }
 
     public boolean exprAdd1() {
@@ -551,14 +583,19 @@ public class SyntaxAnalyzer {
         return "";
     }
 
-    public ConsumedResult exprPrimary() {
-        ConsumedResult consumedResult = new ConsumedResult();
+    public Type exprPrimary() {
         if(token.getCode() == ID) {
             getNext();
+            ConsumedResult consumedResult = new ConsumedResult();
             consumedResult.validate();
             if(token.getCode() == LPAR) {
                 getNext();
-                expr();
+                ConsumedResult exprResult = expr();
+                if(exprResult != null) {
+                    if(exprResult.getValue() instanceof String) {
+                        exprResult = (ConsumedResult<String>) new ConsumedResult<String>();
+                    }
+                }
                 while(token.getCode() == COMMA) {
                     getNext();
                     expr();
@@ -573,17 +610,48 @@ public class SyntaxAnalyzer {
             return consumedResult;
         } else if(token.getCode() == CT_CHAR || token.getCode() == CT_INT || token.getCode() == CT_REAL
                 || token.getCode() == CT_STRING) {
-            consumedResult.validate();
-            switch token.getCode()
+            String rawValue = token.getRawValue();
             getNext();
-
-            return tokenText;
+            switch (token.getCode()) {
+                case CT_STRING: {
+                    ConsumedResult<String> consumedResult = new ConsumedResult<>();
+                    consumedResult.validate();
+                    consumedResult.setValue(rawValue);
+                    return consumedResult;
+                }
+                case CT_CHAR: {
+                    ConsumedResult<Long> consumedResult = new ConsumedResult<>();
+                    byte[] bytes;
+                    try {
+                        bytes = rawValue.getBytes("US-ASCII");
+                    } catch (UnsupportedEncodingException e) {
+                        throw new RuntimeException(e.getMessage());
+                    }
+                    Long valueAdded = (long) bytes[0];
+                    consumedResult.validate();
+                    consumedResult.setValue(valueAdded);
+                    return consumedResult;
+                }
+                case CT_INT: {
+                    ConsumedResult<Integer> consumedResult = new ConsumedResult<>();
+                    consumedResult.validate();
+                    consumedResult.setValue(Integer.valueOf(rawValue));
+                    return consumedResult;
+                }
+                case CT_REAL:: {
+                    ConsumedResult<Double> consumedResult = new ConsumedResult<>();
+                    consumedResult.validate();
+                    consumedResult.setValue(Double.valueOf(rawValue));
+                    return consumedResult;
+                }
+                default: return null;
+            }
         } else if(token.getCode() == LPAR) {
             getNext();
             if(expr()) {
                 if(token.getCode() == RPAR) {
                     getNext();
-                    return "";
+                    return new ConsumedResult();
                 }
             }
         }
