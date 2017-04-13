@@ -5,6 +5,7 @@ public class Symbol {
     private Type type;
     private ClassType cls;
     private int depth;
+    private MemType memType;
 
     public String getName() {
         return name;
@@ -36,5 +37,13 @@ public class Symbol {
 
     public void setDepth(int depth) {
         this.depth = depth;
+    }
+
+    public MemType getMemType() {
+        return memType;
+    }
+
+    public void setMemType(MemType memType) {
+        this.memType = memType;
     }
 }

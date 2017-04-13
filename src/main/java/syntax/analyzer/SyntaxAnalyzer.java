@@ -12,6 +12,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import static domain.symbols.ClassType.CLS_FUNC;
+import static domain.symbols.ClassType.CLS_VAR;
 import static token.TokenType.*;
 
 /**
@@ -83,8 +85,15 @@ public class SyntaxAnalyzer {
             }
 
             if(token.getCode() == ID) {
+                String tokenText = token.getRawValue();
                 getNext();
                 if(token.getCode() == LPAR) {
+                    if(domainAnalyzer.findSymbol(tokenText) != null)
+                        throw new InvalidStatementException("Symbol already defined " + tokenText, token.getLine());
+                    domainAnalyzer.setCurrentFunc((FuncSymbol) domainAnalyzer.addSymbol(tokenText, CLS_FUNC));
+                    FuncSymbol funcSymbol = domainAnalyzer.getCurrentFunc();
+                    funcSymbol.setType(type);
+                    domainAnalyzer.increaseCurrentDepth();
                     getNext();
                     if(funcArg()) {
                         while(token.getCode() == COMMA) {
@@ -93,8 +102,11 @@ public class SyntaxAnalyzer {
                         }
                     }
                     if(token.getCode() == RPAR) {
+                        domainAnalyzer.decreaseCurrentDepth();
                         getNext();
                         if(stmCompound()) {
+                            domainAnalyzer.deleteSymbolsAfter(domainAnalyzer.getCurrentFunc());
+                            domainAnalyzer.setCurrentFunc(null);
                             return true;
                         } else throw new InvalidStatementException("Missing closing `}` or invalid statement", token.getLine());
                     } else throw new InvalidStatementException("Missing closing `)` or invalid statement", token.getLine());
@@ -107,8 +119,15 @@ public class SyntaxAnalyzer {
             type.setTypeBase(TypeBase.TB_VOID);
             getNext();
             if(token.getCode() == ID) {
+                String tokenText = token.getRawValue();
                 getNext();
                 if (token.getCode() == LPAR) {
+                    if(domainAnalyzer.findSymbol(tokenText) != null)
+                        throw new InvalidStatementException("Symbol already defined " + tokenText, token.getLine());
+                    domainAnalyzer.setCurrentFunc((FuncSymbol) domainAnalyzer.addSymbol(tokenText, CLS_FUNC));
+                    FuncSymbol funcSymbol = domainAnalyzer.getCurrentFunc();
+                    funcSymbol.setType(type);
+                    domainAnalyzer.increaseCurrentDepth();
                     getNext();
                     if (funcArg()) {
                         while (token.getCode() == COMMA) {
@@ -117,8 +136,11 @@ public class SyntaxAnalyzer {
                         }
                     }
                     if (token.getCode() == RPAR) {
+                        domainAnalyzer.decreaseCurrentDepth();
                         getNext();
                         if (stmCompound()) {
+                            domainAnalyzer.deleteSymbolsAfter(domainAnalyzer.getCurrentFunc());
+                            domainAnalyzer.setCurrentFunc(null);
                             return true;
                         } else throw new InvalidStatementException("Missing closing `}` or invalid statement", token.getLine());
                     } else throw new InvalidStatementException("Missing closing `)` or invalid statement", token.getLine());
@@ -130,12 +152,16 @@ public class SyntaxAnalyzer {
     }
 
     public boolean stmCompound() {
+        Symbol start = domainAnalyzer.getSymbolList().get(domainAnalyzer.getSymbolList().size() - 1);
         if(token.getCode() == LACC) {
+            domainAnalyzer.increaseCurrentDepth();
             getNext();
             while(declVar() || stm()) {
 
             }
             if(token.getCode() == RACC) {
+                domainAnalyzer.decreaseCurrentDepth();
+                domainAnalyzer.deleteSymbolsAfter(start);
                 getNext();
                 return true;
             }
@@ -230,11 +256,23 @@ public class SyntaxAnalyzer {
     }
 
     public boolean funcArg() {
-        TypeBase typeBase;
-        if((typeBase = typeBase()) != null) {
+        Type type = new Type();
+        if((type = typeBase(type)) != null) {
             if(token.getCode() == ID) {
+                String tokenText = token.getRawValue();
                 getNext();
-                arrayDecl();
+                Type arrayDeclType = arrayDecl(type);
+                if(arrayDeclType != null) {
+                    type = arrayDeclType;
+                } else {
+                    type.setNoOfElements(-1);
+                }
+                Symbol symbol = domainAnalyzer.addSymbol(tokenText, CLS_VAR);
+                symbol.setMemType(MemType.MEM_ARG);
+                symbol.setType(type);
+                symbol = domainAnalyzer.addSymbol(domainAnalyzer.getCurrentFunc().getArgs(), tokenText, CLS_VAR);
+                symbol.setMemType(MemType.MEM_ARG);
+                symbol.setType(type);
                 return true;
             } else throw new InvalidStatementException("Missing identifier", token.getLine());
         }
@@ -246,9 +284,9 @@ public class SyntaxAnalyzer {
             Token currentToken = token;
             getNext();
             if (token.getCode() == ID) {
+                String tokenText = token.getRawValue();
                 getNext();
                 if (token.getCode() == LACC) {
-                    String tokenText = token.getRawValue();
                     if(domainAnalyzer.findSymbol(tokenText) != null) {
                         throw new InvalidStatementException("Symbol already defined " + tokenText, token.getLine());
                     }
@@ -352,13 +390,13 @@ public class SyntaxAnalyzer {
                 type.setNoOfElements(0);
                 return type;
             } else {
-                throw new InvalidStatementException("Missing closing `}`", token.getLine());
+                throw new InvalidStatementException("Missing closing `]`", token.getLine());
             }
         }
         return null;
     }
 
-    public ConsumedResult expr() {
+    public boolean expr() {
         return exprAssign();
     }
 
@@ -376,6 +414,7 @@ public class SyntaxAnalyzer {
             //Go back since there's nothing else in here
             goBackTo(currentToken);
         }
+        goBackTo(currentToken);
         if (exprOr()) {
             return true;
         }
@@ -453,7 +492,7 @@ public class SyntaxAnalyzer {
         Token currentToken = token;
         if(token.getCode() == LPAR) {
             getNext();
-            if(typeName()) {
+            if(typeName(new Type()) != null) {
                 if(token.getCode() == RPAR) {
                     getNext();
                     if(exprCast()) {
@@ -551,21 +590,19 @@ public class SyntaxAnalyzer {
     }
 
     public boolean exprPostfix() {
-        if(exprPrimary() != null) {
+        if(exprPrimary()) {
             return exprPostfix1();
         }
         return false;
     }
 
-    public String exprPostfix1() {
+    public boolean exprPostfix1() {
         if(token.getCode() == LBRACKET) {
             getNext();
-            Double exprResult;
-            if((exprResult = expr()) != null) {
+            if(expr()) {
                 if(token.getCode() == RBRACKET) {
                     getNext();
-                    String postResult = exprPostfix1();
-                    return "".equals(postResult) ? exprResult
+                    return exprPostfix1();
                 } else {
                     throw new InvalidStatementException("Missing expression", token.getLine());
                 }
@@ -580,81 +617,40 @@ public class SyntaxAnalyzer {
                 exprPostfix1();
             }
         }
-        return "";
+        return true;
     }
 
-    public Type exprPrimary() {
+    public boolean exprPrimary() {
         if(token.getCode() == ID) {
             getNext();
-            ConsumedResult consumedResult = new ConsumedResult();
-            consumedResult.validate();
             if(token.getCode() == LPAR) {
                 getNext();
-                ConsumedResult exprResult = expr();
-                if(exprResult != null) {
-                    if(exprResult.getValue() instanceof String) {
-                        exprResult = (ConsumedResult<String>) new ConsumedResult<String>();
-                    }
-                }
+                expr();
                 while(token.getCode() == COMMA) {
                     getNext();
                     expr();
                 }
                 if(token.getCode() == RPAR) {
                     getNext();
-                    return consumedResult;
+                    return true;
                 } else {
                     throw new InvalidStatementException("Missing expression", token.getLine());
                 }
             }
-            return consumedResult;
+            return true;
         } else if(token.getCode() == CT_CHAR || token.getCode() == CT_INT || token.getCode() == CT_REAL
                 || token.getCode() == CT_STRING) {
-            String rawValue = token.getRawValue();
             getNext();
-            switch (token.getCode()) {
-                case CT_STRING: {
-                    ConsumedResult<String> consumedResult = new ConsumedResult<>();
-                    consumedResult.validate();
-                    consumedResult.setValue(rawValue);
-                    return consumedResult;
-                }
-                case CT_CHAR: {
-                    ConsumedResult<Long> consumedResult = new ConsumedResult<>();
-                    byte[] bytes;
-                    try {
-                        bytes = rawValue.getBytes("US-ASCII");
-                    } catch (UnsupportedEncodingException e) {
-                        throw new RuntimeException(e.getMessage());
-                    }
-                    Long valueAdded = (long) bytes[0];
-                    consumedResult.validate();
-                    consumedResult.setValue(valueAdded);
-                    return consumedResult;
-                }
-                case CT_INT: {
-                    ConsumedResult<Integer> consumedResult = new ConsumedResult<>();
-                    consumedResult.validate();
-                    consumedResult.setValue(Integer.valueOf(rawValue));
-                    return consumedResult;
-                }
-                case CT_REAL:: {
-                    ConsumedResult<Double> consumedResult = new ConsumedResult<>();
-                    consumedResult.validate();
-                    consumedResult.setValue(Double.valueOf(rawValue));
-                    return consumedResult;
-                }
-                default: return null;
-            }
+            return true;
         } else if(token.getCode() == LPAR) {
             getNext();
             if(expr()) {
                 if(token.getCode() == RPAR) {
                     getNext();
-                    return new ConsumedResult();
+                    return true;
                 }
             }
         }
-        return null;
+        return false;
     }
 }

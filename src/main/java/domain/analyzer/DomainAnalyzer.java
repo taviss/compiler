@@ -64,6 +64,7 @@ public class DomainAnalyzer {
     }
 
     public Symbol findSymbol(String name) {
+        if(symbolList.isEmpty()) return null;
         ListIterator<Symbol> iterator = symbolList.listIterator(symbolList.size());
         while(iterator.hasPrevious()) {
             Symbol symbol = iterator.previous();
@@ -73,12 +74,17 @@ public class DomainAnalyzer {
     }
 
     public Symbol findSymbol(List<Symbol> symbols, String name) {
+        if(symbols.isEmpty()) return null;
         ListIterator<Symbol> iterator = symbols.listIterator(symbols.size());
         while(iterator.hasPrevious()) {
             Symbol symbol = iterator.previous();
             if(symbol.getName().equals(name)) return symbol;
         }
         return null;
+    }
+
+    public List<Symbol> getSymbolList() {
+        return this.symbolList;
     }
 
     public void addVar(Token token, Type type) {
@@ -96,13 +102,31 @@ public class DomainAnalyzer {
             }
             symbol = addSymbol(token.getRawValue(),CLS_VAR);
             symbol.setType(type);
+            symbol.setMemType(MemType.MEM_LOCAL);
         } else {
             if(findSymbol(token.getRawValue()) != null) {
                 //Error
             }
             Symbol symbol = addSymbol(token.getRawValue(),CLS_VAR);
             symbol.setType(type);
+            symbol.setMemType(MemType.MEM_GLOBAL);
         }
+    }
+
+    public void deleteSymbolsAfter(Symbol symbol) {
+        ListIterator<Symbol> iterator = symbolList.listIterator(symbolList.indexOf(symbol) + 1);
+        while(iterator.hasNext()) {
+            iterator.next();
+            iterator.remove();
+        }
+    }
+
+    public void increaseCurrentDepth() {
+        this.currentDepth++;
+    }
+
+    public void decreaseCurrentDepth() {
+        this.currentDepth--;
     }
 
     public int getCurrentDepth() {
@@ -113,7 +137,7 @@ public class DomainAnalyzer {
         this.currentDepth = currentDepth;
     }
 
-    public Symbol getCurrentStruct() {
+    public StructSymbol getCurrentStruct() {
         return currentStruct;
     }
 
@@ -121,7 +145,7 @@ public class DomainAnalyzer {
         this.currentStruct = currentStruct;
     }
 
-    public Symbol getCurrentFunc() {
+    public FuncSymbol getCurrentFunc() {
         return currentFunc;
     }
 
