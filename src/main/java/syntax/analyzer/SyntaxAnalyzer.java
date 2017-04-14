@@ -60,6 +60,7 @@ public class SyntaxAnalyzer {
                 break;
             }
         }
+        System.out.println(domainAnalyzer.getSymbolList().toString());
     }
 
     public boolean unit() {
@@ -142,7 +143,7 @@ public class SyntaxAnalyzer {
                             domainAnalyzer.deleteSymbolsAfter(domainAnalyzer.getCurrentFunc());
                             domainAnalyzer.setCurrentFunc(null);
                             return true;
-                        } else throw new InvalidStatementException("Missing closing `}` or invalid statement", token.getLine());
+                        } else throw new InvalidStatementException("Invalid statement", token.getLine());
                     } else throw new InvalidStatementException("Missing closing `)` or invalid statement", token.getLine());
                 }
             }
@@ -622,6 +623,7 @@ public class SyntaxAnalyzer {
 
     public boolean exprPrimary() {
         if(token.getCode() == ID) {
+            if(domainAnalyzer.findSymbol(token.getRawValue()) == null) throw new InvalidStatementException("Undefined symbol " + token.getRawValue(), token.getLine());
             getNext();
             if(token.getCode() == LPAR) {
                 getNext();

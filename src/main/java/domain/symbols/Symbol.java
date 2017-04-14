@@ -46,4 +46,8 @@ public class Symbol {
     public void setMemType(MemType memType) {
         this.memType = memType;
     }
+
+    public String toString() {
+       return "\n" + getName() + ":\n\ttype=" + getType() + "\n\tcls=" + getCls() + "\n\tmemType=" + getMemType() + "\n\tdepth=" + getDepth();
+    }
 }

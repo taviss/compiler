@@ -26,14 +26,17 @@ public class CompDriver {
         tokenAnalyzer.setDefinitions(definitions);
         sourceParser.setTokenAnalyzer(tokenAnalyzer);
 
-        URL defURL = CompDriver.class.getClassLoader().getResource("tests/9.c");
+
+
+        URL defURL = CompDriver.class.getClassLoader().getResource("tests/4.c");
 
         List<Token> tokenList = sourceParser.parsFile(defURL.getPath());
         SyntaxAnalyzer syntaxAnalyzer = new SyntaxAnalyzer(tokenList);
         syntaxAnalyzer.start();
 
-        /*
+
         //Just for testing
+        /*
         for(int i = 1; i <= 9; i++) {
             System.out.println("File: " + i + ".c");
             URL defURL = CompDriver.class.getClassLoader().getResource("tests/" + i + ".c");

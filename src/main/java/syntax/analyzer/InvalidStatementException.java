@@ -5,7 +5,7 @@ package syntax.analyzer;
  */
 public class InvalidStatementException extends RuntimeException {
     public InvalidStatementException(String message, int line) {
-        super(message + "@" + line);
+        super(message + " @ line " + line);
     }
 
 }

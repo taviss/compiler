@@ -27,4 +27,8 @@ public class Type {
     public void setNoOfElements(int noOfElements) {
         this.noOfElements = noOfElements;
     }
+
+    public String toString() {
+        return "[TypeBase=" + getTypeBase() + ", elements=" + getNoOfElements() + "]";
+    }
 }
