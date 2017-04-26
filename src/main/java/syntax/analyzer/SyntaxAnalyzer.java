@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import token.Token;
 import token.TokenType;
+import type.analyzer.ReturnValue;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Iterator;
@@ -179,7 +180,10 @@ public class SyntaxAnalyzer {
                 getNext();
                 if (token.getCode() == LPAR) {
                     getNext();
-                    if (expr()) {
+                    ReturnValue returnValue = expr();
+                    if (returnValue != null) {
+                        if(returnValue.getType().getTypeBase() == TypeBase.TB_STRUCT) throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
+
                         if (token.getCode() == RPAR) {
                             getNext();
                             if (stm()) {
@@ -198,7 +202,10 @@ public class SyntaxAnalyzer {
                 getNext();
                 if (token.getCode() == LPAR) {
                     getNext();
-                    if (expr()) {
+                    ReturnValue returnValue = expr();
+                    if (returnValue != null) {
+                        if(returnValue.getType().getTypeBase() == TypeBase.TB_STRUCT) throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
+
                         if (token.getCode() == RPAR) {
                             getNext();
                             if (stm()) {
@@ -215,7 +222,11 @@ public class SyntaxAnalyzer {
                     expr();
                     if(token.getCode() == SEMICOLON) {
                         getNext();
-                        expr();
+                        ReturnValue returnValue = expr();
+                        if (returnValue != null) {
+                            if (returnValue.getType().getTypeBase() == TypeBase.TB_STRUCT)
+                                throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
+                        }
                         if(token.getCode() == SEMICOLON) {
                             getNext();
                             expr();
@@ -238,7 +249,12 @@ public class SyntaxAnalyzer {
             }
             case RETURN: {
                 getNext();
-                expr();
+                ReturnValue returnValue = expr();
+                if (returnValue != null) {
+                    if (domainAnalyzer.getCurrentFunc().getType().getTypeBase() == TypeBase.TB_VOID)
+                        throw new InvalidStatementException("Void function " + domainAnalyzer.getCurrentFunc().getName() + " cannot return a value", token.getLine());
+                }
+                //TODO Cast method ??????? returnValue is lost anyways????
                 if(token.getCode() == SEMICOLON) {
                     getNext();
                     return true;
@@ -327,7 +343,7 @@ public class SyntaxAnalyzer {
             if(token.getCode() == ID) {
                 Symbol symbol = domainAnalyzer.findSymbol(token.getRawValue());
                 if(symbol == null) {
-                    throw new InvalidStatementException("Undefined symbol " + token.getRawValue(), token.getLine());
+                    throw new InvalidStatementException("Undefined symbol `" + token.getRawValue() + "`", token.getLine());
                 } else if(symbol.getCls() != ClassType.CLS_STRUCT) {
                     throw new InvalidStatementException(token.getRawValue() + " is not a struct", token.getLine());
                 }
@@ -385,10 +401,16 @@ public class SyntaxAnalyzer {
     public Type arrayDecl(Type type) {
         if(token.getCode() == LBRACKET) {
             getNext();
-            expr();
+            ReturnValue returnValue = expr();
+            if(returnValue != null) {
+                if(!returnValue.isCtVal()) throw new InvalidStatementException("Array size is not constant", token.getLine());
+                if(returnValue.getType().getTypeBase() != TypeBase.TB_INT) throw new InvalidStatementException("Array size is not an integer", token.getLine());
+                type.setNoOfElements((int)returnValue.getConstantValue());
+            } else {
+                type.setNoOfElements(0);
+            }
             if(token.getCode() == RBRACKET) {
                 getNext();
-                type.setNoOfElements(0);
                 return type;
             } else {
                 throw new InvalidStatementException("Missing closing `]`", token.getLine());
@@ -397,13 +419,14 @@ public class SyntaxAnalyzer {
         return null;
     }
 
-    public boolean expr() {
+    public ReturnValue expr() {
         return exprAssign();
     }
 
-    public boolean exprAssign() {
+    public ReturnValue exprAssign() {
         Token currentToken = token;
-        if(exprUnary()) {
+        ReturnValue returnValue = exprUnary();
+        if(returnValue != null) {
             if (token.getCode() == ASSIGN) {
                 getNext();
                 if (exprAssign()) {
@@ -616,6 +639,8 @@ public class SyntaxAnalyzer {
             if(token.getCode() == ID) {
                 getNext();
                 exprPostfix1();
+            } else {
+                throw new InvalidStatementException("Missing ID", token.getLine());
             }
         }
         return true;
@@ -623,7 +648,7 @@ public class SyntaxAnalyzer {
 
     public boolean exprPrimary() {
         if(token.getCode() == ID) {
-            if(domainAnalyzer.findSymbol(token.getRawValue()) == null) throw new InvalidStatementException("Undefined symbol " + token.getRawValue(), token.getLine());
+            if(domainAnalyzer.findSymbol(token.getRawValue()) == null) throw new InvalidStatementException("Undefined symbol `" + token.getRawValue() + "`", token.getLine());
             getNext();
             if(token.getCode() == LPAR) {
                 getNext();

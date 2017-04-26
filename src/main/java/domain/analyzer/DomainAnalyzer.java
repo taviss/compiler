@@ -1,6 +1,7 @@
 package domain.analyzer;
 
 import domain.symbols.*;
+import syntax.analyzer.InvalidStatementException;
 import token.Token;
 
 import java.util.ArrayList;
@@ -91,6 +92,7 @@ public class DomainAnalyzer {
         if(getCurrentStruct() != null) {
             if(findSymbol(currentStruct.getMembers(), token.getRawValue()) != null) {
                 //Error
+                throw new SymbolRedefinitionException("Symbol already defined `" + token.getRawValue() + "`", token.getLine());
             } else {
                 Symbol symbol = addSymbol(currentStruct.getMembers(), token.getRawValue(), CLS_VAR);
                 symbol.setType(type);
@@ -99,6 +101,7 @@ public class DomainAnalyzer {
             Symbol symbol = findSymbol(token.getRawValue());
             if(symbol != null && symbol.getDepth() == getCurrentDepth()) {
                 //Error
+                throw new SymbolRedefinitionException("Symbol already defined `" + token.getRawValue() + "`", token.getLine());
             }
             symbol = addSymbol(token.getRawValue(),CLS_VAR);
             symbol.setType(type);
@@ -106,6 +109,7 @@ public class DomainAnalyzer {
         } else {
             if(findSymbol(token.getRawValue()) != null) {
                 //Error
+                throw new SymbolRedefinitionException("Symbol already defined `" + token.getRawValue() + "`", token.getLine());
             }
             Symbol symbol = addSymbol(token.getRawValue(),CLS_VAR);
             symbol.setType(type);

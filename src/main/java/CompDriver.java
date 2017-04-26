@@ -28,7 +28,7 @@ public class CompDriver {
 
 
 
-        URL defURL = CompDriver.class.getClassLoader().getResource("tests/4.c");
+        URL defURL = CompDriver.class.getClassLoader().getResource("tests/9.c");
 
         List<Token> tokenList = sourceParser.parsFile(defURL.getPath());
         SyntaxAnalyzer syntaxAnalyzer = new SyntaxAnalyzer(tokenList);
