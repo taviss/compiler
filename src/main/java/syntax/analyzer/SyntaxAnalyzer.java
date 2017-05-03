@@ -15,7 +15,11 @@ import java.util.List;
 
 import static domain.symbols.ClassType.CLS_FUNC;
 import static domain.symbols.ClassType.CLS_VAR;
+import static domain.symbols.TypeBase.TB_INT;
+import static domain.symbols.TypeBase.TB_STRUCT;
 import static token.TokenType.*;
+import static utils.Utils.cast;
+import static utils.Utils.getArithType;
 
 /**
  * Created by octav on 3/29/2017.
@@ -25,6 +29,8 @@ import static token.TokenType.*;
  */
 public class SyntaxAnalyzer {
     private static final Logger LOG = LoggerFactory.getLogger(SyntaxAnalyzer.class);
+
+    private static SyntaxAnalyzer SINGLETON;
 
     private List<Token> tokens;
     private Iterator<Token> tokenIterator;
@@ -36,6 +42,15 @@ public class SyntaxAnalyzer {
         this.tokenIterator = tokens.iterator();
         this.domainAnalyzer = new DomainAnalyzer();
         getNext();
+        SINGLETON = this;
+    }
+
+    public static SyntaxAnalyzer getInstance() {
+        if(SINGLETON == null) {
+            throw new RuntimeException("The syntax analyzer hasn't been initialised yet");
+        }
+
+        return SINGLETON;
     }
 
     private boolean getNext() {
@@ -44,6 +59,10 @@ public class SyntaxAnalyzer {
             return true;
         }
         return false;
+    }
+
+    public Token getCurrentToken() {
+        return this.token;
     }
 
     private void goBackTo(Token token) {
@@ -182,7 +201,7 @@ public class SyntaxAnalyzer {
                     getNext();
                     ReturnValue returnValue = expr();
                     if (returnValue != null) {
-                        if(returnValue.getType().getTypeBase() == TypeBase.TB_STRUCT) throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
+                        if(returnValue.getType().getTypeBase() == TB_STRUCT) throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
 
                         if (token.getCode() == RPAR) {
                             getNext();
@@ -204,7 +223,7 @@ public class SyntaxAnalyzer {
                     getNext();
                     ReturnValue returnValue = expr();
                     if (returnValue != null) {
-                        if(returnValue.getType().getTypeBase() == TypeBase.TB_STRUCT) throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
+                        if(returnValue.getType().getTypeBase() == TB_STRUCT) throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
 
                         if (token.getCode() == RPAR) {
                             getNext();
@@ -224,7 +243,7 @@ public class SyntaxAnalyzer {
                         getNext();
                         ReturnValue returnValue = expr();
                         if (returnValue != null) {
-                            if (returnValue.getType().getTypeBase() == TypeBase.TB_STRUCT)
+                            if (returnValue.getType().getTypeBase() == TB_STRUCT)
                                 throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
                         }
                         if(token.getCode() == SEMICOLON) {
@@ -429,8 +448,16 @@ public class SyntaxAnalyzer {
         if(returnValue != null) {
             if (token.getCode() == ASSIGN) {
                 getNext();
-                if (exprAssign()) {
-                    return true;
+                ReturnValue returnValueA = exprAssign();
+                if (returnValueA != null) {
+                    if(!returnValue.isLVal())
+                        throw new InvalidStatementException("Cannot assign to a non lval", token.getLine());
+                    if(returnValue.getType().getNoOfElements() > -1 || returnValueA.getType().getNoOfElements() > -1)
+                        throw new InvalidStatementException("Arrays cannot be assigned", token.getLine());
+                    cast(returnValue.getType(), returnValueA.getType());
+                    returnValue.setCtVal(false);
+                    returnValue.setLVal(false);
+                    return returnValue;
                 } else {
                     throw new InvalidStatementException("Missing assign expression", token.getLine());
                 }
@@ -439,88 +466,192 @@ public class SyntaxAnalyzer {
             goBackTo(currentToken);
         }
         goBackTo(currentToken);
-        if (exprOr()) {
-            return true;
+        returnValue = exprOr();
+        if (returnValue != null) {
+            return returnValue;
         }
         goBackTo(currentToken);
-        return false;
+        return null;
     }
 
-    public boolean exprOr() {
-        if(exprAnd()) {
-            return exprOr1();
+    public ReturnValue exprOr() {
+        ReturnValue returnValue = exprAnd();
+        if(returnValue != null) {
+            return exprOr1(returnValue);
         }
-        return false;
+        return null;
     }
 
-    public boolean exprOr1() {
+    public ReturnValue exprOr1(ReturnValue returnValue) {
         if(token.getCode() == OR) {
             getNext();
-            if(exprAnd()) {
-                exprOr1();
+            ReturnValue returnValueAnd = exprAnd();
+            if(returnValueAnd != null) {
+                if(returnValue.getType().getTypeBase() == TB_STRUCT || returnValueAnd.getType().getTypeBase() == TB_STRUCT)
+                    throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
+                returnValue.setType(new Type(TB_INT, -1));
+                returnValue.setCtVal(false);
+                returnValue.setLVal(false);
+                return exprOr1(returnValue);
             } else {
                 throw new InvalidStatementException("Missing statement", token.getLine());
             }
         }
-        return true;
+        return returnValue;
     }
 
-    public boolean exprAnd() {
-        if(exprEq()) {
-            return exprAnd1();
+    public ReturnValue exprAnd() {
+        ReturnValue returnValue = exprEq();
+        if(returnValue != null) {
+            return exprAnd1(returnValue);
         }
-        return false;
+        return null;
     }
 
-    public boolean exprEq() {
-        if(exprRel()) {
-            return exprEq1();
+    public ReturnValue exprAnd1(ReturnValue returnValue) {
+        if(token.getCode() == AND) {
+            getNext();
+            ReturnValue returnValueEq = exprEq();
+            if(returnValueEq != null) {
+                if(returnValue.getType().getTypeBase() == TB_STRUCT|| returnValueEq.getType().getTypeBase() == TB_STRUCT)
+                    throw new InvalidStatementException("A structure cannot be logically tested", token.getLine());
+                returnValue.setType(new Type(TB_INT, -1));
+                returnValue.setCtVal(false);
+                returnValue.setLVal(false);
+                return exprAnd1(returnValue);
+            } else {
+                throw new InvalidStatementException("Missing expression", token.getLine());
+            }
         }
-        return false;
+        return returnValue;
     }
 
-    public boolean exprRel() {
-        if(exprAdd()) {
-            return exprRel1();
+    public ReturnValue exprEq() {
+        ReturnValue returnValue = exprRel();
+        if(returnValue != null) {
+            return exprEq1(returnValue);
         }
-        return false;
+        return null;
     }
 
-    public boolean exprAdd() {
-        if(exprMul()) {
-            return exprAdd1();
+    public ReturnValue exprEq1(ReturnValue returnValue) {
+        if(token.getCode() == EQUAL || token.getCode() == NOTEQ) {
+            getNext();
+            ReturnValue returnValueRel = exprRel();
+            if(returnValueRel != null) {
+                if(returnValue.getType().getTypeBase() == TB_STRUCT || returnValueRel.getType().getTypeBase() == TB_STRUCT)
+                    throw new InvalidStatementException("A structure cannot be compared", token.getLine());
+                returnValue.setType(new Type(TB_INT, -1));
+                returnValue.setCtVal(false);
+                returnValue.setLVal(false);
+                return exprEq1(returnValue);
+            } else {
+                throw new InvalidStatementException("Missing expression", token.getLine());
+            }
         }
-        return false;
+        return returnValue;
     }
 
-    public boolean exprMul() {
-        if(exprCast()) {
-            return exprMul1();
+    public ReturnValue exprRel() {
+        ReturnValue returnValue = exprAdd();
+        if(returnValue != null) {
+            return exprRel1(returnValue);
         }
-        return false;
+        return null;
     }
 
-    public boolean exprMul1() {
+    public ReturnValue exprRel1(ReturnValue returnValue) {
+        if(token.getCode() == LESS || token.getCode() == LESSEQ || token.getCode() == GREATER
+                || token.getCode() == GREATEREQ) {
+            getNext();
+            ReturnValue returnValueAdd = exprAdd();
+            if(returnValueAdd != null) {
+                if(returnValue.getType().getNoOfElements() >- 1 || returnValueAdd.getType().getNoOfElements() > -1)
+                    throw new InvalidStatementException("An array cannot be compared", token.getLine());
+                if(returnValue.getType().getTypeBase() == TB_STRUCT || returnValueAdd.getType().getTypeBase() == TB_STRUCT)
+                    throw new InvalidStatementException("A structure cannot be compared", token.getLine());
+                returnValue.setType(new Type(TB_INT, -1));
+                returnValue.setCtVal(false);
+                returnValue.setLVal(false);
+                return exprRel1(returnValue);
+            } else {
+                throw new InvalidStatementException("Missing expression", token.getLine());
+            }
+        }
+        return returnValue;
+    }
+
+    public ReturnValue exprAdd() {
+        ReturnValue returnValue = exprMul();
+        if(returnValue != null) {
+            return exprAdd1(returnValue);
+        }
+        return null;
+    }
+
+    public ReturnValue exprAdd1(ReturnValue returnValue) {
+        if(token.getCode() == ADD || token.getCode() == SUB) {
+            getNext();
+            ReturnValue returnValueMul = exprMul();
+            if(returnValueMul != null) {
+                if(returnValue.getType().getNoOfElements() >- 1 || returnValueMul.getType().getNoOfElements() > -1)
+                    throw new InvalidStatementException("An array cannot be added/subtracted", token.getLine());
+                if(returnValue.getType().getTypeBase() == TB_STRUCT || returnValueMul.getType().getTypeBase() == TB_STRUCT)
+                    throw new InvalidStatementException("A structure cannot be added/subtracted", token.getLine());
+                returnValue.setType(getArithType(returnValue.getType(), returnValueMul.getType()));
+                returnValue.setCtVal(false);
+                returnValue.setLVal(false);
+                return exprAdd1(returnValue);
+            } else {
+                throw new InvalidStatementException("Missing expression after (+/-)", token.getLine());
+            }
+        }
+        return returnValue;
+    }
+
+    public ReturnValue exprMul() {
+        ReturnValue returnValue = exprCast();
+        if(returnValue != null) {
+            return exprMul1(returnValue);
+        }
+        return null;
+    }
+
+    public ReturnValue exprMul1(ReturnValue returnValue) {
         if(token.getCode() == MUL || token.getCode() == DIV) {
             getNext();
-            if(exprCast()) {
-                exprMul1();
+            ReturnValue returnValueCast = exprCast();
+            if(returnValueCast != null) {
+                if(returnValue.getType().getNoOfElements() >- 1 || returnValueCast.getType().getNoOfElements() > -1)
+                    throw new InvalidStatementException("An array cannot be divided/multiplied", token.getLine());
+                if(returnValue.getType().getTypeBase() == TB_STRUCT || returnValueCast.getType().getTypeBase() == TB_STRUCT)
+                    throw new InvalidStatementException("A structure cannot be divided/multiplied", token.getLine());
+                returnValue.setType(getArithType(returnValue.getType(), returnValueCast.getType()));
+                returnValue.setCtVal(false);
+                returnValue.setLVal(false);
+                return exprMul1(returnValue);
             } else {
                 throw new InvalidStatementException("Missing expression ", token.getLine());
             }
         }
-        return true;
+        return returnValue;
     }
 
-    public boolean exprCast() {
+    public ReturnValue exprCast() {
         Token currentToken = token;
         if(token.getCode() == LPAR) {
             getNext();
-            if(typeName(new Type()) != null) {
+            Type type = typeName(new Type());
+            if(type != null) {
                 if(token.getCode() == RPAR) {
                     getNext();
-                    if(exprCast()) {
-                        return true;
+                    ReturnValue returnValue = exprCast();
+                    if(returnValue != null) {
+                        cast(type, returnValue.getType());
+                        returnValue.setType(type);
+                        returnValue.setCtVal(false);
+                        returnValue.setLVal(false);
+                        return returnValue;
                     }
                 }
             }
@@ -530,74 +661,23 @@ public class SyntaxAnalyzer {
         return exprUnary();
     }
 
-    public Type typeName(Type type) {
-        if((type = typeBase(type)) != null) {
-            Type arrayDeclType;
-            if((arrayDeclType = arrayDecl(type)) != null) {
-                type = arrayDeclType;
-            } else {
-                type.setNoOfElements(-1);
-            }
-            return type;
-        }
-        return null;
-    }
-
-    public boolean exprAdd1() {
-        if(token.getCode() == ADD || token.getCode() == SUB) {
-            getNext();
-            if(exprMul()) {
-                exprAdd1();
-            } else {
-                throw new InvalidStatementException("Missing expression after (+/-)", token.getLine());
-            }
-        }
-        return true;
-    }
-
-    public boolean exprRel1() {
-        if(token.getCode() == LESS || token.getCode() == LESSEQ || token.getCode() == GREATER
-                || token.getCode() == GREATEREQ) {
-            getNext();
-            if(exprAdd()) {
-                exprRel1();
-            } else {
-                throw new InvalidStatementException("Missing expression", token.getLine());
-            }
-        }
-        return true;
-    }
-
-    public boolean exprEq1() {
-        if(token.getCode() == EQUAL || token.getCode() == NOTEQ) {
-            getNext();
-            if(exprRel()) {
-                exprEq1();
-            } else {
-                throw new InvalidStatementException("Missing expression", token.getLine());
-            }
-        }
-        return true;
-    }
-
-    public boolean exprAnd1() {
-        if(token.getCode() == AND) {
-            getNext();
-            if(exprEq()) {
-                exprAnd1();
-            } else {
-                throw new InvalidStatementException("Missing expression", token.getLine());
-            }
-        }
-        return true;
-    }
-
-    public boolean exprUnary() {
+    public ReturnValue exprUnary() {
         Token currentToken = token;
         if(token.getCode() == SUB || token.getCode() == NOT) {
             getNext();
-            if(exprUnary()) {
-                return true;
+            ReturnValue returnValue = exprUnary();
+            if(returnValue != null) {
+                if(currentToken.getCode() == SUB) {
+                    if(returnValue.getType().getNoOfElements() >= 0) throw new InvalidStatementException("Unary '-' cannot be applied to an array", token.getLine());
+                    if(returnValue.getType().getTypeBase() == TB_STRUCT)
+                        throw new InvalidStatementException("Unary '-' cannot be applied to a structure", token.getLine());
+                } else {
+                    if(returnValue.getType().getTypeBase() == TB_STRUCT) throw new InvalidStatementException("Unary '!' cannot be applied to a structure", token.getLine());
+                    returnValue.setType(new Type(TB_INT, -1));
+                }
+                returnValue.setCtVal(false);
+                returnValue.setLVal(false);
+                return returnValue;
             }
             goBackTo(currentToken);
         }
@@ -611,6 +691,19 @@ public class SyntaxAnalyzer {
             exprUnary1();
         }
         return true;
+    }
+
+    public Type typeName(Type type) {
+        if((type = typeBase(type)) != null) {
+            Type arrayDeclType;
+            if((arrayDeclType = arrayDecl(type)) != null) {
+                type = arrayDeclType;
+            } else {
+                type.setNoOfElements(-1);
+            }
+            return type;
+        }
+        return null;
     }
 
     public boolean exprPostfix() {

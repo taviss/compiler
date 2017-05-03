@@ -12,6 +12,11 @@ public class Type {
         this.typeBase = typeBase;
     }
 
+    public Type(TypeBase typeBase, int noOfElements) {
+        this.typeBase = typeBase;
+        this.noOfElements = noOfElements;
+    }
+
     public TypeBase getTypeBase() {
         return typeBase;
     }
