@@ -11,6 +11,7 @@ import java.util.ListIterator;
 
 import static domain.symbols.ClassType.CLS_EXTFUNC;
 import static domain.symbols.ClassType.CLS_VAR;
+import static domain.symbols.TypeBase.*;
 
 public class DomainAnalyzer {
     private List<Symbol> symbolList;
@@ -124,6 +125,43 @@ public class DomainAnalyzer {
             iterator.remove();
         }
     }
+    
+    public void addExtFuncs() {
+        FuncSymbol symbol = (FuncSymbol) addExtFunc("put_s",new Type(TB_VOID,-1));
+        addFuncArg(symbol,"s",new Type(TB_CHAR,0));
+
+        symbol = (FuncSymbol) addExtFunc("get_s",new Type(TB_VOID,-1));
+        addFuncArg(symbol,"s",new Type(TB_CHAR,0));
+
+        symbol = (FuncSymbol) addExtFunc("put_i",new Type(TB_VOID,-1));
+        addFuncArg(symbol,"i",new Type(TB_INT,-1));
+
+        addExtFunc("get_i",new Type(TB_INT,-1));
+
+        symbol = (FuncSymbol) addExtFunc("put_d",new Type(TB_VOID,-1));
+        addFuncArg(symbol,"d",new Type(TB_DOUBLE,-1));
+
+        addExtFunc("get_d",new Type(TB_DOUBLE,-1));
+
+        symbol = (FuncSymbol) addExtFunc("put_c",new Type(TB_VOID,-1));
+        addFuncArg(symbol,"c",new Type(TB_CHAR,-1));
+
+        addExtFunc("get_c",new Type(TB_CHAR,-1));
+
+        addExtFunc("seconds",new Type(TB_DOUBLE,-1));
+    }
+
+    public Symbol addExtFunc(String name,Type type) {
+        Symbol symbol = addSymbol(name, CLS_EXTFUNC);
+        symbol.setType(type);
+        return symbol;
+    }
+    public Symbol addFuncArg(FuncSymbol func, String name,Type type) {
+        Symbol symbol = addSymbol(func.getArgs(), name, CLS_VAR);
+        symbol.setType(type);
+        return symbol;
+    }
+
 
     public void increaseCurrentDepth() {
         this.currentDepth++;

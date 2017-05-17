@@ -96,7 +96,10 @@ public class Utils {
                 switch (type2.getTypeBase()) {
                     case TB_CHAR: return getArithType(type2, type1);
                     case TB_INT: break;
-                    case TB_DOUBLE: resultedTypeBase = TB_DOUBLE;
+                    case TB_DOUBLE: {
+                        resultedTypeBase = TB_DOUBLE;
+                        break;
+                    }
                     default:
                         throw new UnsupportedOperationException("Could not get resulted type for " + type1.getTypeBase() + " and " + type2.getTypeBase(), SyntaxAnalyzer.getInstance().getCurrentToken().getLine());
                 }

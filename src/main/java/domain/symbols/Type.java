@@ -7,6 +7,11 @@ public class Type {
     public Type() {
 
     }
+    
+    public Type(Type anotherType) {
+        this.typeBase = anotherType.getTypeBase();
+        this.noOfElements = anotherType.getNoOfElements();
+    }
 
     public Type(TypeBase typeBase) {
         this.typeBase = typeBase;

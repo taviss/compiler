@@ -75,6 +75,7 @@ public class SyntaxAnalyzer {
     }
 
     public void start() {
+        domainAnalyzer.addExtFuncs();
         while(tokenIterator.hasNext()) {
             if(!unit()) {
                 break;
@@ -702,8 +703,8 @@ public class SyntaxAnalyzer {
                 if(returnValue.getType().getNoOfElements() < 0) throw new InvalidStatementException("Only an array can be indexed", token.getLine());
                 Type type = new Type(TB_INT, -1);
                 cast(type, returnValueExpr.getType());
-                //returnValue.setType(returnValueExpr.getType());
-                //returnValue.getType().setNoOfElements(-1);
+                returnValue.setType(returnValue.getType());
+                returnValue.getType().setNoOfElements(-1);
                 returnValue.setLVal(true);
                 returnValue.setCtVal(false);
                 if(token.getCode() == RBRACKET) {
@@ -724,7 +725,7 @@ public class SyntaxAnalyzer {
                 Symbol member = domainAnalyzer.findSymbol(symbol.getMembers(), name);
                 if(member == null)
                     throw new InvalidStatementException("Struct" + symbol.getName() + " doesn't have a member " + name, token.getLine());
-                returnValue.setType(symbol.getType());
+                returnValue.setType(member.getType());
                 returnValue.setLVal(true);
                 returnValue.setCtVal(false);
                 getNext();
@@ -755,7 +756,11 @@ public class SyntaxAnalyzer {
             Symbol symbol;
             String name = token.getRawValue();
             if((symbol = domainAnalyzer.findSymbol(name)) == null) throw new InvalidStatementException("Undefined symbol `" + name + "`", token.getLine());
-            returnValue.setType(symbol.getType());
+            if(symbol.getType() instanceof StructType) {
+                returnValue.setType(new StructType((StructType) symbol.getType()));   
+            } else {
+                returnValue.setType(new Type(symbol.getType()));
+            }
             returnValue.setLVal(true);
             returnValue.setCtVal(false);
             getNext();
