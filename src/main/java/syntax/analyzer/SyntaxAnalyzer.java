@@ -13,10 +13,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import static domain.symbols.ClassType.CLS_EXTFUNC;
 import static domain.symbols.ClassType.CLS_FUNC;
 import static domain.symbols.ClassType.CLS_VAR;
-import static domain.symbols.TypeBase.TB_INT;
-import static domain.symbols.TypeBase.TB_STRUCT;
+import static domain.symbols.TypeBase.*;
 import static token.TokenType.*;
 import static utils.Utils.cast;
 import static utils.Utils.getArithType;
@@ -686,11 +686,54 @@ public class SyntaxAnalyzer {
         return exprPostfix();
     }
 
-    public boolean exprUnary1() {
-        if(exprPostfix()) {
-            exprUnary1();
+    public ReturnValue exprPostfix() {
+        ReturnValue returnValue = exprPrimary();
+        if(returnValue != null) {
+            return exprPostfix1(returnValue);
         }
-        return true;
+        return null;
+    }
+
+    public ReturnValue exprPostfix1(ReturnValue returnValue) {
+        if(token.getCode() == LBRACKET) {
+            getNext();
+            ReturnValue returnValueExpr = expr();
+            if(returnValueExpr != null) {
+                if(returnValue.getType().getNoOfElements() < 0) throw new InvalidStatementException("Only an array can be indexed", token.getLine());
+                Type type = new Type(TB_INT, -1);
+                cast(type, returnValueExpr.getType());
+                returnValue.setType(returnValueExpr.getType());
+                returnValue.getType().setNoOfElements(-1);
+                returnValue.setLVal(true);
+                returnValue.setCtVal(false);
+                if(token.getCode() == RBRACKET) {
+                    getNext();
+                    return exprPostfix1(returnValue);
+                } else {
+                    throw new InvalidStatementException("Missing expression", token.getLine());
+                }
+            } else {
+                throw new InvalidStatementException("Missing expression", token.getLine());
+            }
+        }
+        else if(token.getCode() == DOT) {
+            getNext();
+            if(token.getCode() == ID) {
+                String name = token.getRawValue();
+                StructSymbol symbol = (StructSymbol) ((StructType) returnValue.getType()).getSymbol();
+                Symbol member = domainAnalyzer.findSymbol(symbol.getMembers(), name);
+                if(member == null)
+                    throw new InvalidStatementException("Struct" + symbol.getName() + " doesn't have a member " + name, token.getLine());
+                returnValue.setType(symbol.getType());
+                returnValue.setLVal(true);
+                returnValue.setCtVal(false);
+                getNext();
+                exprPostfix1(returnValue);
+            } else {
+                throw new InvalidStatementException("Missing ID", token.getLine());
+            }
+        }
+        return returnValue;
     }
 
     public Type typeName(Type type) {
@@ -706,71 +749,89 @@ public class SyntaxAnalyzer {
         return null;
     }
 
-    public boolean exprPostfix() {
-        if(exprPrimary()) {
-            return exprPostfix1();
-        }
-        return false;
-    }
-
-    public boolean exprPostfix1() {
-        if(token.getCode() == LBRACKET) {
-            getNext();
-            if(expr()) {
-                if(token.getCode() == RBRACKET) {
-                    getNext();
-                    return exprPostfix1();
-                } else {
-                    throw new InvalidStatementException("Missing expression", token.getLine());
-                }
-            } else {
-                throw new InvalidStatementException("Missing expression", token.getLine());
-            }
-        }
-        else if(token.getCode() == DOT) {
-            getNext();
-            if(token.getCode() == ID) {
-                getNext();
-                exprPostfix1();
-            } else {
-                throw new InvalidStatementException("Missing ID", token.getLine());
-            }
-        }
-        return true;
-    }
-
-    public boolean exprPrimary() {
+    public ReturnValue exprPrimary() {
+        ReturnValue returnValue = new ReturnValue();
         if(token.getCode() == ID) {
-            if(domainAnalyzer.findSymbol(token.getRawValue()) == null) throw new InvalidStatementException("Undefined symbol `" + token.getRawValue() + "`", token.getLine());
+            Symbol symbol;
+            String name = token.getRawValue();
+            if((symbol = domainAnalyzer.findSymbol(name)) == null) throw new InvalidStatementException("Undefined symbol `" + name + "`", token.getLine());
+            returnValue.setType(symbol.getType());
+            returnValue.setLVal(true);
+            returnValue.setCtVal(false);
             getNext();
             if(token.getCode() == LPAR) {
+                if(symbol.getCls() != CLS_FUNC && symbol.getCls() != CLS_EXTFUNC)
+                    throw new InvalidStatementException("Call of the non-function " + name, token.getLine());
+                List<Symbol> funcArgs = ((FuncSymbol) symbol).getArgs();
+                int argIndex = 0;
                 getNext();
-                expr();
-                while(token.getCode() == COMMA) {
-                    getNext();
-                    expr();
+                ReturnValue returnValueExpr = expr();
+                if(returnValueExpr != null) {
+                    if(argIndex > funcArgs.size()) throw new InvalidStatementException("Too many arguments in call", token.getLine());
+                    cast(funcArgs.get(argIndex).getType(), returnValueExpr.getType());
+                    argIndex++;
+                    
+                    while (token.getCode() == COMMA) {
+                        getNext();
+                        ReturnValue returnValueExpr1 = expr();
+                        
+                        if(argIndex > funcArgs.size()) throw new InvalidStatementException("Too many arguments in call", token.getLine());
+                        cast(funcArgs.get(argIndex).getType(), returnValueExpr1.getType());
+                        argIndex++;
+                    }
                 }
                 if(token.getCode() == RPAR) {
+                    if(argIndex < funcArgs.size()) throw new InvalidStatementException("Too few arguments in call", token.getLine());
+                    returnValue.setType(symbol.getType());
+                    returnValue.setLVal(false);
+                    returnValue.setCtVal(false);
                     getNext();
-                    return true;
+                    return returnValue;
                 } else {
                     throw new InvalidStatementException("Missing expression", token.getLine());
                 }
             }
-            return true;
-        } else if(token.getCode() == CT_CHAR || token.getCode() == CT_INT || token.getCode() == CT_REAL
-                || token.getCode() == CT_STRING) {
+            if(symbol.getCls() == CLS_FUNC || symbol.getCls() == CLS_EXTFUNC)
+                throw new InvalidStatementException("Missing call for function " + name, token.getLine());
+            return returnValue;
+        } else if(token.getCode() == CT_CHAR) {
+            returnValue.setType(new Type(TB_CHAR, -1));
+            returnValue.setConstantValue(token.getRawValue().charAt(0));
+            returnValue.setCtVal(true);
+            returnValue.setLVal(false);
             getNext();
-            return true;
+            return returnValue;
+        } else if(token.getCode() == CT_INT) {
+            returnValue.setType(new Type(TB_INT, -1));
+            returnValue.setConstantValue(Integer.valueOf(token.getRawValue()));
+            returnValue.setCtVal(true);
+            returnValue.setLVal(false);
+            getNext();
+            return returnValue;
+        } else if (token.getCode() == CT_REAL) {
+            returnValue.setType(new Type(TB_DOUBLE, -1));
+            returnValue.setConstantValue(Double.valueOf(token.getRawValue()));
+            returnValue.setCtVal(true);
+            returnValue.setLVal(false);
+            getNext();
+            return returnValue;
+        } else if (token.getCode() == CT_STRING) {
+            returnValue.setType(new Type(TB_CHAR, 0));
+            returnValue.setConstantValue(token.getRawValue());
+            returnValue.setCtVal(true);
+            returnValue.setLVal(false);
+            getNext();
+            return returnValue;
         } else if(token.getCode() == LPAR) {
             getNext();
-            if(expr()) {
+            ReturnValue returnValueExpr = expr();
+            if(returnValueExpr != null) {
                 if(token.getCode() == RPAR) {
                     getNext();
-                    return true;
+                    return returnValueExpr;
                 }
             }
         }
-        return false;
+        return null;
     }
 }
