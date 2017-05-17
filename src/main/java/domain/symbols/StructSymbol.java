@@ -8,6 +8,7 @@ public class StructSymbol extends Symbol {
 
     public StructSymbol() {
         this.members = new ArrayList<>();
+        super.setType(new StructType());
     }
 
     public List<Symbol> getMembers() {

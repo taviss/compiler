@@ -702,8 +702,8 @@ public class SyntaxAnalyzer {
                 if(returnValue.getType().getNoOfElements() < 0) throw new InvalidStatementException("Only an array can be indexed", token.getLine());
                 Type type = new Type(TB_INT, -1);
                 cast(type, returnValueExpr.getType());
-                returnValue.setType(returnValueExpr.getType());
-                returnValue.getType().setNoOfElements(-1);
+                //returnValue.setType(returnValueExpr.getType());
+                //returnValue.getType().setNoOfElements(-1);
                 returnValue.setLVal(true);
                 returnValue.setCtVal(false);
                 if(token.getCode() == RBRACKET) {
@@ -728,7 +728,7 @@ public class SyntaxAnalyzer {
                 returnValue.setLVal(true);
                 returnValue.setCtVal(false);
                 getNext();
-                exprPostfix1(returnValue);
+                return exprPostfix1(returnValue);
             } else {
                 throw new InvalidStatementException("Missing ID", token.getLine());
             }
