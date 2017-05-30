@@ -1,8 +1,10 @@
 package runtime.virtual.machine;
 
 import runtime.instructions.Instruction;
+import runtime.instructions.InstructionException;
 import runtime.instructions.Opcode;
 
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -13,9 +15,11 @@ import static runtime.instructions.Opcode.O_CALL;
 public class VirtualMachine {
     private ByteBuffer stack;
     private LinkedList<Instruction> instructions;
+    private static final int STACK_SIZE = 32 * 1024;
     
     public VirtualMachine() {
         this.instructions = new LinkedList<>();
+        this.stack = ByteBuffer.allocate(STACK_SIZE);
     }
     
     public LinkedList<Instruction> getInstructions() {
@@ -73,131 +77,213 @@ public class VirtualMachine {
         int iVal1,iVal2;
         double dVal1,dVal2;
         Instruction aVal1;
+        Instruction instruction = instructions.pop();
+        int frameIndex, oldFrameIndex;
+        int oldStackIndex;
+        LinkedList<Integer> stackSizes = new LinkedList<>();
         while(true){
             //printf("%p/%d\t",IP,SP-stack);
-            Instruction instruction = instructions.pop();
+            
             switch(instruction.getOpcode()){
-                case O_CALL:
-                    aVal1=instruction.getAddr(0);
+                case O_CALL: {
+                    aVal1 = instruction.getAddr(0);
                     //printf("CALL\t%p\n",aVal1);
-                    pusha(IP->next);
-                    IP=(Instr*)aVal1;
+                    //byte[] bytes = serializeObject(instructions.pop());
+                    stack.putInt(instructions.indexOf(instructions.pop()));
+                    //stackSizes.push(bytes.length);
+                    instruction = aVal1;
                     break;
-                case O_CALLEXT:
-                    printf("CALLEXT\t%p\n",IP->args[0].addr);
-                    (*(void(*)())IP->args[0].addr)();
-                    IP=IP->next;
+                }
+                case O_CALLEXT: {
+                    instruction.getExtFunc().run();
+                    instruction = instructions.pop();
                     break;
-                case O_CAST_I_D:
-                    iVal1=popi();
+                }
+                case O_CAST_I_D: {
+                    iVal1=stack.getInt();
                     dVal1=(double)iVal1;
-                    printf("CAST_I_D\t(%ld -> %g)\n",iVal1,dVal1);
-                    pushd(dVal1);
-                    IP=IP->next;
+                    stack.putDouble(dVal1);
+                    instruction = instructions.pop();
                     break;
-                case O_DROP:
-                    iVal1=IP->args[0].i;
-                    printf("DROP\t%ld\n",iVal1);
-                    if(SP-iVal1<stack)err("not enough stack bytes");
-                    SP-=iVal1;
-                    IP=IP->next;
+                }
+                case O_DROP: {
+                    iVal1=instruction.getInt(0);
+                    //removeBytesFrom(stack, iVal1);
+                    stack.position(stack.position() - iVal1);
+                    instruction = instructions.pop();
                     break;
-                case O_ENTER:
-                    iVal1=IP->args[0].i;
-                    printf("ENTER\t%ld\n",iVal1);
-                    pusha(FP);
-                    FP=SP;
-                    SP+=iVal1;
-                    Laborator Limbaje formale si tehnici de compilare, Universitatea Politehnica Timisoara. © Aciu Razvan Mihai
-                        IP=IP->next;
+                }
+                case O_ENTER: {
+                    iVal1=instruction.getInt(0);
+                    //byte[] obj = serializeObject(frameList);
+                    stack.putInt(frameIndex);
+                    //stackSizes.push(obj.length);
+                    oldFrameIndex = frameIndex;
+                    frameIndex = stack.position();
+                    stack.position(stack.position() + iVal1);
+                    instruction = instructions.pop();
                     break;
-                case O_EQ_D:
-                    dVal1=popd();
-                    dVal2=popd();
-                    printf("EQ_D\t(%g==%g -> %ld)\n",dVal2,dVal1,dVal2==dVal1);
-                    pushi(dVal2==dVal1);
-                    IP=IP->next;
+                }
+                case O_EQ_D: {
+                    dVal1=stack.getDouble();
+                    dVal2=stack.getDouble();
+                    stack.putInt(dVal2==dVal1 ? 1 : 0);
+                    instruction = instructions.pop();
                     break;
+                }
                 case O_HALT:
-                    printf("HALT\n");
                     return;
-                case O_INSERT:
-                    iVal1=IP->args[0].i; // iDst
-                    iVal2=IP->args[1].i; // nBytes
-                    printf("INSERT\t%ld,%ld\n",iVal1,iVal2);
-                    if(SP+iVal2>stackAfter)err("out of stack");
-                    memmove(SP-iVal1+iVal2,SP-iVal1,iVal1); //make room
-                    memmove(SP-iVal1,SP+iVal2,iVal2); //dup
-                    SP+=iVal2;
-                    IP=IP->next;
+                case O_INSERT: {
+                    iVal1=instruction.getInt(0);
+                    iVal2=instruction.getInt(1);
+                    if(stack.position() + iVal1 > STACK_SIZE) throw new InstructionException("Out of stack");
+                    for(int i = stack.position()-iVal1; i < iVal1; i++) {
+                        stack.put(i+iVal2, stack.get(i));
+                    }
+                    int j = 0;
+                    for(int i = stack.position()+iVal2; i < iVal2; i++) {
+                        stack.put(stack.position()-iVal1+j, stack.get(i));
+                        j++;
+                    }
+                    stack.position(stack.position() + iVal2);
+                    instruction = instructions.pop();
                     break;
-                case O_JT_I:
-                    iVal1=popi();
-                    printf("JT\t%p\t(%ld)\n",IP->args[0].addr,iVal1);
-                    IP=iVal1?IP->args[0].addr:IP->next;
+                }
+                case O_JT_I: {
+                    iVal1=stack.getInt();
+                    instruction=iVal1 > 0 ? instruction.getAddr(0) : instructions.pop();
                     break;
-                case O_LOAD:
-                    iVal1=IP->args[0].i;
-                    aVal1=popa();
-                    printf("LOAD\t%ld\t(%p)\n",iVal1,aVal1);
-                    if(SP+iVal1>stackAfter)err("out of stack");
-                    memcpy(SP,aVal1,iVal1);
-                    SP+=iVal1;
-                    IP=IP->next;
+                }
+                case O_LOAD: {
+                    iVal1=instruction.getInt(0);
+                    /*
+                    byte[] bytes1 = new byte[STACK_SIZE];
+                    for(int i = 0; i < stackSizes.pop(); i++) {
+                        bytes1[i] = stack.get();
+                    }
+                    aVal1=deserializeInstruction(bytes1);*/
+
+                    int index = stack.getInt();
+
+                    if(stack.position() + iVal1 > STACK_SIZE) throw new InstructionException("Out of stack");
+                    for(int i = 0; i < iVal1; i++) {
+                        stack.put(stack.position() + i, stack.get(index+i));
+                    }
+                    stack.position(stack.position() + iVal1);
+                    instruction = instructions.pop();
                     break;
-                case O_OFFSET:
-                    iVal1=popi();
-                    aVal1=popa();
-                    printf("OFFSET\t(%p+%ld -> %p)\n",aVal1,iVal1,aVal1+iVal1);
-                    pusha(aVal1+iVal1);
-                    IP=IP->next;
+                }
+                case O_OFFSET: {
+                    iVal1=stack.getInt();
+                    /*
+                    byte[] bytes2 = new byte[STACK_SIZE];
+                    for(int i = 0; i < stackSizes.pop(); i++) {
+                        bytes2[i] = stack.get();
+                    }
+                    aVal1=deserializeInstruction(bytes2);
+                    */
+                    int index = stack.getInt();
+                    stack.putInt(index+iVal1);
+                    instruction = instructions.pop();
                     break;
-                case O_PUSHFPADDR:
-                    iVal1=IP->args[0].i;
-                    printf("PUSHFPADDR\t%ld\t(%p)\n",iVal1,FP+iVal1);
-                    pusha(FP+iVal1);
-                    IP=IP->next;
+                }
+                case O_PUSHFPADDR: {
+                    iVal1=instruction.getInt(0);
+                    stack.putInt(frameIndex+iVal1);
+                    instruction = instructions.pop();
                     break;
-                case O_PUSHCT_A:
-                    aVal1=IP->args[0].addr;
-                    printf("PUSHCT_A\t%p\n",aVal1);
-                    pusha(aVal1);
-                    IP=IP->next;
+                }
+                case O_PUSHCT_A: {
+                    aVal1=instruction.getAddr(0);
+                    stack.putInt(instructions.indexOf(aVal1));
+                    instruction = instructions.pop();
                     break;
-                case O_RET:
-                    iVal1=IP->args[0].i; // sizeArgs
-                    Laborator Limbaje formale si tehnici de compilare, Universitatea Politehnica Timisoara. © Aciu Razvan Mihai
-                        iVal2=IP->args[1].i; // sizeof(retType)
-                    printf("RET\t%ld,%ld\n",iVal1,iVal2);
-                    oldSP=SP;
-                    SP=FP;
-                    FP=popa();
-                    IP=popa();
-                    if(SP-iVal1<stack)err("not enough stack bytes");
-                    SP-=iVal1;
-                    memmove(SP,oldSP-iVal2,iVal2);
-                    SP+=iVal2;
+                }
+                case O_RET: {
+                    iVal1=instruction.getInt(0);
+                    iVal2=instruction.getInt(1);
+                    oldStackIndex=stack.position();
+                    stack.position(frameIndex);
+                    frameIndex = stack.getInt();
+                    instruction = instructions.get(stack.getInt());
+                    if(stack.position()-iVal1 < 0) throw new RuntimeException("STACK ERROR");
+                    stack.position(stack.position()-iVal1);
+                    for(int i = 0; i < iVal2; i++) {
+                        stack.put(stack.position()+i, stack.get(oldStackIndex-iVal2));
+                    }
+                    stack.position(stack.position() + iVal2);
                     break;
-                case O_STORE:
-                    iVal1=IP->args[0].i;
-                    if(SP-(sizeof(void*)+iVal1)<stack)err("not enough stack bytes for SET");
+                }
+                case O_STORE: {
+                    iVal1=instruction.getInt(0);
+                    //if(SP-(sizeof(void*)+iVal1)<stack)err("not enough stack bytes for SET");
                     aVal1=*(void**)(SP-((sizeof(void*)+iVal1)));
                     printf("STORE\t%ld\t(%p)\n",iVal1,aVal1);
                     memcpy(aVal1,SP-iVal1,iVal1);
                     SP-=sizeof(void*)+iVal1;
-                    IP=IP->next;
+                    instruction = instructions.pop();
                     break;
-                case O_SUB_D:
-                    dVal1=popd();
-                    dVal2=popd();
-                    printf("SUB_D\t(%g-%g -> %g)\n",dVal2,dVal1,dVal2-dVal1);
-                    pushd(dVal2-dVal1);
-                    IP=IP->next;
+                }
+                case O_SUB_D: {
+                    dVal1 = popd();
+                    dVal2 = popd();
+                    printf("SUB_D\t(%g-%g -> %g)\n", dVal2, dVal1, dVal2 - dVal1);
+                    pushd(dVal2 - dVal1);
+                    instruction = instructions.pop();
                     break;
+                }
                 default:
                     err("invalid opcode: %d",IP->opcode);
             }
         }
+    }
+
+    public void removeBytesFrom(ByteBuffer bf, int n) {
+        int initialPos = bf.position();
+        for(int i = bf.position(); i > n; i--) {
+            bf.put(i, (byte)0);
+        }
+        bf.position(initialPos - n);
+    }
+
+    public byte[] serializeObject(Object object) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ObjectOutput out = null;
+        try {
+            out = new ObjectOutputStream(byteArrayOutputStream);
+            out.writeObject(object);
+            out.flush();
+            return byteArrayOutputStream.toByteArray();
+        } catch(IOException e) {
+            System.out.println("Ser gone bad");
+        } finally {
+            try {
+                byteArrayOutputStream.close();
+            } catch (IOException ex) {
+                // ignore close exception
+            }
+        }
+        return null;
+    }
+
+    public Instruction deserializeInstruction(byte[] bytes) {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+        ObjectInput in = null;
+        try {
+            in = new ObjectInputStream(byteArrayInputStream);
+           return (Instruction) in.readObject();
+        } catch(IOException|ClassNotFoundException e) {
+            System.out.println("ERROR");
+        } finally {
+            try {
+                if (in != null) {
+                    in.close();
+                }
+            } catch (IOException ex) {
+                // ignore close exception
+            }
+        }
+        return null;
     }
 
 }
