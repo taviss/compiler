@@ -7,6 +7,7 @@ import token.analyzer.TokenAnalyzer;
 
 import java.io.File;
 import java.net.URL;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,6 +26,14 @@ public class CompDriver {
         TokenAnalyzer tokenAnalyzer = new TokenAnalyzer();
         tokenAnalyzer.setDefinitions(definitions);
         sourceParser.setTokenAnalyzer(tokenAnalyzer);
+
+        LinkedList<Integer> list = new LinkedList<>();
+        
+        list.add(12);
+        list.add(13);
+        int index = list.indexOf(12) + 1;
+        list.add(index, 14);
+        
 
 
 /*

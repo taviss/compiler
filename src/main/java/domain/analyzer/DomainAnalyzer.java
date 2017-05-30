@@ -85,6 +85,26 @@ public class DomainAnalyzer {
         return null;
     }
 
+    public Symbol requireSymbol(List<Symbol> symbols, String name) {
+        if(symbols.isEmpty()) return null;
+        ListIterator<Symbol> iterator = symbols.listIterator(symbols.size());
+        while(iterator.hasPrevious()) {
+            Symbol symbol = iterator.previous();
+            if(symbol.getName().equals(name)) return symbol;
+        }
+        throw new RuntimeException("Symbol not found " + name);
+    }
+
+    public Symbol requireSymbol(String name) {
+        if(symbolList.isEmpty()) return null;
+        ListIterator<Symbol> iterator = symbolList.listIterator(symbolList.size());
+        while(iterator.hasPrevious()) {
+            Symbol symbol = iterator.previous();
+            if(symbol.getName().equals(name)) return symbol;
+        }
+        throw new RuntimeException("Symbol not found " + name);
+    }
+
     public List<Symbol> getSymbolList() {
         return this.symbolList;
     }
