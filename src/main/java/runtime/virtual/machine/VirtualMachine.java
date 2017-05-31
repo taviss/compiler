@@ -50,7 +50,7 @@ public class VirtualMachine {
         return instruction;
     }
     
-    public Instruction addInstrA(Opcode opcode, Instruction addr){
+    public Instruction addInstrA(Opcode opcode, int addr){
         Instruction instruction = new Instruction(opcode, addr);
         instructions.add(instruction);
         return instruction;
@@ -86,7 +86,7 @@ public class VirtualMachine {
     public void run() {
         int iVal1,iVal2;
         double dVal1,dVal2;
-        Instruction aVal1;
+        int aVal1;
         Iterator<Instruction> instructionIterator = instructions.iterator();
         Instruction instruction = instructionIterator.next();
         int frameIndex = 0, oldFrameIndex;
@@ -102,7 +102,7 @@ public class VirtualMachine {
                     //byte[] bytes = serializeObject(instructions.pop());
                     stack.putInt(instructions.indexOf(instructions.pop()));
                     //stackSizes.push(bytes.length);
-                    instruction = aVal1;
+                    instruction = instructions.get(aVal1);
                     break;
                 }
                 case O_CALLEXT: {
@@ -163,7 +163,7 @@ public class VirtualMachine {
                 }
                 case O_JT_I: {
                     iVal1=stack.getInt(stack.position() - INT_SIZE);
-                    instruction=iVal1 > 0 ? instruction.getAddr(0) : instructionIterator.next();
+                    instruction=iVal1 > 0 ? instructions.get(instruction.getAddr(0)) : instructionIterator.next();
                     break;
                 }
                 case O_LOAD: {
@@ -207,7 +207,7 @@ public class VirtualMachine {
                 }
                 case O_PUSHCT_A: {
                     aVal1=instruction.getAddr(0);
-                    stack.putInt(instructions.indexOf(aVal1));
+                    stack.putInt(aVal1);
                     instruction = instructionIterator.next();
                     break;
                 }

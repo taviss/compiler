@@ -27,10 +27,9 @@ public class VMTest {
     @Test
     public void VMtest()
     {
-        Instruction L1;
-        Instruction v = virtualMachine.addInstrI(O_PUSHCT_I,3);
+        int v = virtualMachine.getInstructions().indexOf(virtualMachine.addInstrI(O_PUSHCT_I,3));
         virtualMachine.addInstrI(O_STORE, VirtualMachine.INT_SIZE);
-        L1=virtualMachine.addInstrA(O_PUSHCT_A,v);
+        int l1 = virtualMachine.getInstructions().indexOf(virtualMachine.addInstrA(O_PUSHCT_A,v));
         virtualMachine.addInstrI(O_LOAD, VirtualMachine.INT_SIZE);
         virtualMachine.addInstrA(O_CALLEXT, domainAnalyzer.requireSymbol("put_i"));
         virtualMachine.addInstrA(O_PUSHCT_A,v);
@@ -41,7 +40,7 @@ public class VMTest {
         virtualMachine.addInstrI(O_STORE, VirtualMachine.INT_SIZE);
         virtualMachine.addInstrA(O_PUSHCT_A,v);
         virtualMachine.addInstrI(O_LOAD, VirtualMachine.INT_SIZE);
-        virtualMachine.addInstrA(O_JT_I,L1);
+        virtualMachine.addInstrA(O_JT_I,l1);
         virtualMachine.addInstr(O_HALT);
         virtualMachine.run();
     }

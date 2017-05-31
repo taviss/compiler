@@ -79,9 +79,9 @@ public class Instruction {
         throw new InstructionException(opcode + " doesn't have a double value.");
     }
 
-    public Instruction getAddr(int arg) {
-        if(rawValues[arg] instanceof Instruction) {
-            return (Instruction) rawValues[arg];
+    public int getAddr(int arg) {
+        if(rawValues[arg] instanceof Integer) {
+            return (int) rawValues[arg];
         }
         throw new InstructionException(opcode + " doesn't have an address value.");
     }
