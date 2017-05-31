@@ -1,11 +1,15 @@
 package domain.symbols;
 
+import runtime.instructions.ExtFunc;
+
 public class Symbol {
     private String name;
     private Type type;
     private ClassType cls;
     private int depth;
     private MemType memType;
+    private ExtFunc extFunc;
+    private int offset;
 
     public String getName() {
         return name;
@@ -49,5 +53,21 @@ public class Symbol {
 
     public String toString() {
        return "\n" + getName() + ":\n\ttype=" + getType() + "\n\tcls=" + getCls() + "\n\tmemType=" + getMemType() + "\n\tdepth=" + getDepth();
+    }
+
+    public ExtFunc getExtFunc() {
+        return extFunc;
+    }
+
+    public void setExtFunc(ExtFunc extFunc) {
+        this.extFunc = extFunc;
+    }
+
+    public int getOffset() {
+        return offset;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
     }
 }

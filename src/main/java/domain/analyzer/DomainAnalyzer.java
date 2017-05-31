@@ -1,11 +1,11 @@
 package domain.analyzer;
 
 import domain.symbols.*;
-import syntax.analyzer.InvalidStatementException;
+import runtime.instructions.PutI;
+import runtime.instructions.PutS;
 import token.Token;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -149,22 +149,26 @@ public class DomainAnalyzer {
     public void addExtFuncs() {
         FuncSymbol symbol = (FuncSymbol) addExtFunc("put_s",new Type(TB_VOID,-1));
         addFuncArg(symbol,"s",new Type(TB_CHAR,0));
+        symbol.setExtFunc(new PutS());
 
         symbol = (FuncSymbol) addExtFunc("get_s",new Type(TB_VOID,-1));
         addFuncArg(symbol,"s",new Type(TB_CHAR,0));
 
         symbol = (FuncSymbol) addExtFunc("put_i",new Type(TB_VOID,-1));
         addFuncArg(symbol,"i",new Type(TB_INT,-1));
+        symbol.setExtFunc(new PutI());
 
         addExtFunc("get_i",new Type(TB_INT,-1));
 
         symbol = (FuncSymbol) addExtFunc("put_d",new Type(TB_VOID,-1));
         addFuncArg(symbol,"d",new Type(TB_DOUBLE,-1));
+        symbol.setExtFunc(new PutI());
 
         addExtFunc("get_d",new Type(TB_DOUBLE,-1));
 
         symbol = (FuncSymbol) addExtFunc("put_c",new Type(TB_VOID,-1));
         addFuncArg(symbol,"c",new Type(TB_CHAR,-1));
+        symbol.setExtFunc(new PutI());
 
         addExtFunc("get_c",new Type(TB_CHAR,-1));
 

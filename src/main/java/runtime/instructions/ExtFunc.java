@@ -1,11 +1,8 @@
 package runtime.instructions;
 
+import java.nio.ByteBuffer;
+
 public abstract class ExtFunc {
-    protected Object arg;
-    
-    public ExtFunc(Object arg) {
-        this.arg = arg;
-    }
-    
-    public abstract void run();
+    public abstract void run(ByteBuffer stack);
+    public abstract void run(ByteBuffer stack, int offset);
 }

@@ -1,5 +1,7 @@
 package runtime.virtual.machine;
 
+import domain.symbols.Symbol;
+import runtime.instructions.ExtFunc;
 import runtime.instructions.Instruction;
 import runtime.instructions.InstructionException;
 import runtime.instructions.Opcode;
@@ -16,6 +18,8 @@ public class VirtualMachine {
     private ByteBuffer stack;
     private LinkedList<Instruction> instructions;
     private static final int STACK_SIZE = 32 * 1024;
+    public static final int INT_SIZE = 4;
+    public static final int DOUBLE_SIZE = 4;
     
     public VirtualMachine() {
         this.instructions = new LinkedList<>();
@@ -52,6 +56,12 @@ public class VirtualMachine {
         return instruction;
     }
 
+    public Instruction addInstrA(Opcode opcode, Symbol symbol){
+        Instruction instruction = new Instruction(opcode, symbol);
+        instructions.add(instruction);
+        return instruction;
+    }
+
     public Instruction addInstrI(Opcode opcode, int val){
         Instruction instruction = new Instruction(opcode, val);
         instructions.add(instruction);
@@ -77,11 +87,12 @@ public class VirtualMachine {
         int iVal1,iVal2;
         double dVal1,dVal2;
         Instruction aVal1;
-        Instruction instruction = instructions.pop();
-        int frameIndex, oldFrameIndex;
+        Iterator<Instruction> instructionIterator = instructions.iterator();
+        Instruction instruction = instructionIterator.next();
+        int frameIndex = 0, oldFrameIndex;
         int oldStackIndex;
         LinkedList<Integer> stackSizes = new LinkedList<>();
-        while(true){
+        while(true) {
             //printf("%p/%d\t",IP,SP-stack);
             
             switch(instruction.getOpcode()){
@@ -95,22 +106,23 @@ public class VirtualMachine {
                     break;
                 }
                 case O_CALLEXT: {
-                    instruction.getExtFunc().run();
-                    instruction = instructions.pop();
+                    ExtFunc extFunc = instruction.getSymbol().getExtFunc();
+                    extFunc.run(stack, instruction.getSymbol().getOffset());
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_CAST_I_D: {
-                    iVal1=stack.getInt();
+                    iVal1=stack.getInt(stack.position() - INT_SIZE);
                     dVal1=(double)iVal1;
                     stack.putDouble(dVal1);
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_DROP: {
                     iVal1=instruction.getInt(0);
                     //removeBytesFrom(stack, iVal1);
                     stack.position(stack.position() - iVal1);
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_ENTER: {
@@ -121,14 +133,14 @@ public class VirtualMachine {
                     oldFrameIndex = frameIndex;
                     frameIndex = stack.position();
                     stack.position(stack.position() + iVal1);
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_EQ_D: {
-                    dVal1=stack.getDouble();
-                    dVal2=stack.getDouble();
+                    dVal1=stack.getDouble(stack.position() - DOUBLE_SIZE);
+                    dVal2=stack.getDouble(stack.position() - DOUBLE_SIZE);
                     stack.putInt(dVal2==dVal1 ? 1 : 0);
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_HALT:
@@ -146,12 +158,12 @@ public class VirtualMachine {
                         j++;
                     }
                     stack.position(stack.position() + iVal2);
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_JT_I: {
-                    iVal1=stack.getInt();
-                    instruction=iVal1 > 0 ? instruction.getAddr(0) : instructions.pop();
+                    iVal1=stack.getInt(stack.position() - INT_SIZE);
+                    instruction=iVal1 > 0 ? instruction.getAddr(0) : instructionIterator.next();
                     break;
                 }
                 case O_LOAD: {
@@ -163,18 +175,18 @@ public class VirtualMachine {
                     }
                     aVal1=deserializeInstruction(bytes1);*/
 
-                    int index = stack.getInt();
+                    int index = stack.getInt(stack.position() - INT_SIZE);
 
                     if(stack.position() + iVal1 > STACK_SIZE) throw new InstructionException("Out of stack");
                     for(int i = 0; i < iVal1; i++) {
                         stack.put(stack.position() + i, stack.get(index+i));
                     }
                     stack.position(stack.position() + iVal1);
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_OFFSET: {
-                    iVal1=stack.getInt();
+                    iVal1=stack.getInt(stack.position() - INT_SIZE);
                     /*
                     byte[] bytes2 = new byte[STACK_SIZE];
                     for(int i = 0; i < stackSizes.pop(); i++) {
@@ -182,21 +194,39 @@ public class VirtualMachine {
                     }
                     aVal1=deserializeInstruction(bytes2);
                     */
-                    int index = stack.getInt();
+                    int index = stack.getInt(stack.position() - INT_SIZE);
                     stack.putInt(index+iVal1);
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_PUSHFPADDR: {
                     iVal1=instruction.getInt(0);
                     stack.putInt(frameIndex+iVal1);
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_PUSHCT_A: {
                     aVal1=instruction.getAddr(0);
                     stack.putInt(instructions.indexOf(aVal1));
-                    instruction = instructions.pop();
+                    instruction = instructionIterator.next();
+                    break;
+                }
+                case O_PUSHCT_I: {
+                    iVal1=instruction.getInt(0);
+                    stack.putInt(iVal1);
+                    instruction = instructionIterator.next();
+                    break;
+                }
+                case O_PUSHCT_C: {
+                    iVal1=instruction.getInt(0);
+                    stack.putInt(iVal1);
+                    instruction = instructionIterator.next();
+                    break;
+                }
+                case O_PUSHCT_D: {
+                    dVal1=instruction.getDouble(0);
+                    stack.putDouble(dVal1);
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_RET: {
@@ -204,8 +234,8 @@ public class VirtualMachine {
                     iVal2=instruction.getInt(1);
                     oldStackIndex=stack.position();
                     stack.position(frameIndex);
-                    frameIndex = stack.getInt();
-                    instruction = instructions.get(stack.getInt());
+                    frameIndex = stack.getInt(stack.position() - INT_SIZE);
+                    instruction = instructions.get(stack.getInt(stack.position() - INT_SIZE));
                     if(stack.position()-iVal1 < 0) throw new RuntimeException("STACK ERROR");
                     stack.position(stack.position()-iVal1);
                     for(int i = 0; i < iVal2; i++) {
@@ -216,24 +246,33 @@ public class VirtualMachine {
                 }
                 case O_STORE: {
                     iVal1=instruction.getInt(0);
+                    int index = stack.position() - iVal1;
                     //if(SP-(sizeof(void*)+iVal1)<stack)err("not enough stack bytes for SET");
-                    aVal1=*(void**)(SP-((sizeof(void*)+iVal1)));
-                    printf("STORE\t%ld\t(%p)\n",iVal1,aVal1);
-                    memcpy(aVal1,SP-iVal1,iVal1);
-                    SP-=sizeof(void*)+iVal1;
-                    instruction = instructions.pop();
+                    int oldPos = stack.position();
+                    stack.position(index);
+                    for(int i = 0; i < iVal1; i++) {
+                        stack.put(stack.position()+i, stack.get(oldPos-iVal1+i));
+                    }
+                    stack.position(iVal1);
+                    instruction = instructionIterator.next();
                     break;
                 }
                 case O_SUB_D: {
-                    dVal1 = popd();
-                    dVal2 = popd();
-                    printf("SUB_D\t(%g-%g -> %g)\n", dVal2, dVal1, dVal2 - dVal1);
-                    pushd(dVal2 - dVal1);
-                    instruction = instructions.pop();
+                    dVal1 = stack.getDouble(stack.position() - DOUBLE_SIZE);
+                    dVal2 = stack.getDouble(stack.position() - DOUBLE_SIZE);
+                    stack.putDouble(dVal2 - dVal1);
+                    instruction = instructionIterator.next();
+                    break;
+                }
+                case O_SUB_I: {
+                    iVal1 = stack.getInt(stack.position() - INT_SIZE);
+                    iVal2 = stack.getInt(stack.position() - INT_SIZE);
+                    stack.putInt(iVal2 - iVal1);
+                    instruction = instructionIterator.next();
                     break;
                 }
                 default:
-                    err("invalid opcode: %d",IP->opcode);
+                    throw new InstructionException("Unknown opcode");
             }
         }
     }

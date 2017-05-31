@@ -1,5 +1,7 @@
 package runtime.instructions;
 
+import domain.symbols.Symbol;
+
 import java.util.ArrayList;
 
 public class Instruction {
@@ -28,6 +30,13 @@ public class Instruction {
     public ExtFunc getExtFunc() {
         if(rawValues[0] instanceof ExtFunc) {
             return (ExtFunc) rawValues[0];
+        }
+        throw new InstructionException("No ExtFunc found");
+    }
+
+    public Symbol getSymbol() {
+        if(rawValues[0] instanceof Symbol) {
+            return (Symbol) rawValues[0];
         }
         throw new InstructionException("No ExtFunc found");
     }
