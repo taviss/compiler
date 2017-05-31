@@ -1,15 +1,18 @@
 package runtime.instructions;
 
 import java.nio.ByteBuffer;
+import java.util.Scanner;
 
-public class PutC extends ExtFunc {
+public class GetS extends ExtFunc {
     @Override
     public void run(ByteBuffer stack) {
-        System.out.print(stack.getChar(stack.position() - 1));
+        Scanner scan = new Scanner(System.in);
+        String i = scan.nextLine();
+        stack.put(i.getBytes());
     }
 
     @Override
     public void run(ByteBuffer stack, int offset) {
-        run(stack);
+
     }
 }

@@ -19,7 +19,7 @@ public class VirtualMachine {
     private LinkedList<Instruction> instructions;
     private static final int STACK_SIZE = 32 * 1024;
     public static final int INT_SIZE = 4;
-    public static final int DOUBLE_SIZE = 4;
+    public static final int DOUBLE_SIZE = 8;
     
     public VirtualMachine() {
         this.instructions = new LinkedList<>();

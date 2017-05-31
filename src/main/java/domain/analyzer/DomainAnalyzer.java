@@ -1,6 +1,8 @@
 package domain.analyzer;
 
 import domain.symbols.*;
+import runtime.instructions.PutC;
+import runtime.instructions.PutD;
 import runtime.instructions.PutI;
 import runtime.instructions.PutS;
 import token.Token;
@@ -162,13 +164,13 @@ public class DomainAnalyzer {
 
         symbol = (FuncSymbol) addExtFunc("put_d",new Type(TB_VOID,-1));
         addFuncArg(symbol,"d",new Type(TB_DOUBLE,-1));
-        symbol.setExtFunc(new PutI());
+        symbol.setExtFunc(new PutD());
 
         addExtFunc("get_d",new Type(TB_DOUBLE,-1));
 
         symbol = (FuncSymbol) addExtFunc("put_c",new Type(TB_VOID,-1));
         addFuncArg(symbol,"c",new Type(TB_CHAR,-1));
-        symbol.setExtFunc(new PutI());
+        symbol.setExtFunc(new PutC());
 
         addExtFunc("get_c",new Type(TB_CHAR,-1));
 

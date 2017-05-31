@@ -1,11 +1,14 @@
 package runtime.instructions;
 
+import runtime.virtual.machine.VirtualMachine;
+
 import java.nio.ByteBuffer;
 
-public class PutC extends ExtFunc {
+public class PutD extends ExtFunc {
     @Override
     public void run(ByteBuffer stack) {
-        System.out.print(stack.getChar(stack.position() - 1));
+        double out = stack.getDouble(stack.position() - VirtualMachine.DOUBLE_SIZE);
+        System.out.print(out);
     }
 
     @Override
